@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local DD data
+documents/
+results/
+workspaces/
+
+# AI models/cache
+models/
+.cache/
+huggingface/
+
+# Logs
+*.log
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python test/cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

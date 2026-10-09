@@ -60,5 +60,9 @@ def main():
         session.close()
 
 
+def test_document_ingestion():
+    main()
+
+
 if __name__ == "__main__":
     main()

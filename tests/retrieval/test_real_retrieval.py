@@ -65,5 +65,9 @@ def main():
         session.close()
 
 
+def test_real_retrieval():
+    main()
+
+
 if __name__ == "__main__":
     main()

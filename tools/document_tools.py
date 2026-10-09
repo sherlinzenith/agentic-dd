@@ -116,12 +116,12 @@ def extract_cash_flow(text):
 
 
 def extract_quarter(text, quarter):
-    """Find a line like 'Q1 FY2025-26 24.00' (any FY label) and return the last number."""
+    """Find a line like 'Q1 FY2025-26 24.00' or multi-line cell 'Q1 FY2025-26\n24.00' and return the number."""
 
     match = re.search(
-        rf"^\s*{quarter}\b.*?(-?[\d,]+\.\d+)\s*$",
+        rf"{quarter}\b(?:[^\n]*\n\s*|[^\n]*?\s+)(-?[\d,]+\.\d+)",
         text,
-        re.IGNORECASE | re.MULTILINE,
+        re.IGNORECASE,
     )
 
     if not match:

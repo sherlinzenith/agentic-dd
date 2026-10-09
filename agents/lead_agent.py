@@ -1,4 +1,4 @@
-﻿"""
+"""
 Lead DD Agent
 
 Responsibilities:
@@ -360,7 +360,7 @@ def lead_node(state):
 
         lead_notes.append(
             "Execution plan: "
-            + " → ".join(plan)
+            + " -> ".join(plan)
         )
 
     else:
@@ -407,7 +407,7 @@ def lead_node(state):
 
     print(
         "[Lead Agent] Execution plan: "
-        f"{' → '.join(plan) if plan else 'none'}"
+        f"{' -> '.join(plan) if plan else 'none'}"
     )
 
     if skipped:
@@ -459,12 +459,12 @@ def route_after_lead(state):
 
     Current:
 
-        financial → classify
+        financial -> classify
 
     Future:
 
-        legal → legal_start
-        commercial → commercial_start
+        legal -> legal_start
+        commercial -> commercial_start
     """
 
     plan = state.get("plan") or []
@@ -495,7 +495,7 @@ def route_after_lead(state):
 
     print(
         f"\n[Lead Agent] Routing to "
-        f"{first_agent} agent → {route}"
+        f"{first_agent} agent -> {route}"
     )
 
     return route

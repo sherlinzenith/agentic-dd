@@ -87,7 +87,9 @@ def is_contract(document):
 def contract_title(document):
     for line in (document.get("text") or "").splitlines():
         if line.strip():
-            return line.strip()
+            # Clean string for safe console display across encodings
+            cleaned = line.strip().encode("ascii", "replace").decode("ascii")
+            return cleaned
     return document.get("document", "")
 
 

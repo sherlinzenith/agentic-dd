@@ -5,7 +5,6 @@
 from retrieval.models.documents import (
     Document,
     DocumentChunk,
-    DocumentTable,
 )
 
 from retrieval.models.projects import DDProject

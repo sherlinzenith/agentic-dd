@@ -3,7 +3,7 @@ from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from retrieval.models.documents import Document, DocumentChunk, DocumentTable
+from retrieval.models.documents import Document, DocumentChunk
 
 
 class DocumentRepository:
@@ -92,52 +92,6 @@ class DocumentRepository:
                 Document.project_id == project_id
             )
 
-        return self.session.scalars(statement).all()
-
-
-    def create_table(
-        self,
-        document_id: str,
-        table_index: int,
-        content: str,
-        page_number: int | None = None,
-        section: str | None = None,
-    ) -> DocumentTable:
-        table = DocumentTable(
-            document_id=document_id,
-            table_index=table_index,
-            content=content,
-            page_number=page_number,
-            section=section,
-        )
-        self.session.add(table)
-        self.session.flush()
-        return table
-
-    def get_document_page_chunks(
-        self,
-        document_id: str,
-        page_number: int,
-    ) -> Sequence[DocumentChunk]:
-        statement = (
-            select(DocumentChunk)
-            .where(
-                DocumentChunk.document_id == document_id,
-                DocumentChunk.page_number == page_number,
-            )
-            .order_by(DocumentChunk.chunk_index)
-        )
-        return self.session.scalars(statement).all()
-
-    def get_document_tables(
-        self,
-        document_id: str,
-    ) -> Sequence[DocumentTable]:
-        statement = (
-            select(DocumentTable)
-            .where(DocumentTable.document_id == document_id)
-            .order_by(DocumentTable.table_index)
-        )
         return self.session.scalars(statement).all()
 
     def save(self) -> None:

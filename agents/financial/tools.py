@@ -1,6 +1,14 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
+import re
 from typing import Any
+
+from database.session import SessionLocal
+from retrieval.repositories.document_repository import DocumentRepository
+from retrieval.services.document_search import DocumentSearchService
+
+
+_search_service = DocumentSearchService()
 
 
 def search_financial_documents(
@@ -9,25 +17,23 @@ def search_financial_documents(
     limit: int = 10,
 ) -> dict[str, Any]:
     """
-    Search financial-related document content.
-
-    The implementation will later query PostgreSQL + pgvector/BGE-M3.
-
-    This function intentionally does not decide what query to perform.
-    Qwen3 decides the query.
+    Semantic search over financial documents for the Financial DD Agent.
     """
 
+    results = _search_service.search(
+        query=query,
+        project_id=project_id,
+        limit=limit,
+        category="financial",
+    )
+
     return {
-        "status": "NOT_CONNECTED",
+        "status": "OK",
         "tool": "search_financial_documents",
-        "project_id": project_id,
         "query": query,
-        "limit": limit,
-        "message": (
-            "Financial document retrieval is not connected yet. "
-            "The production implementation will query the document "
-            "and vector retrieval layer."
-        ),
+        "project_id": project_id,
+        "results": results,
+        "result_count": len(results),
     }
 
 
@@ -35,61 +41,160 @@ def read_document_page(
     document_id: str,
     page: int,
 ) -> dict[str, Any]:
-    """
-    Read a specific document page.
+    """Read persisted text chunks for a specific source-document page."""
 
-    Qwen3 decides which document/page requires inspection.
-    """
+    if page < 1:
+        return {
+            "status": "ERROR",
+            "tool": "read_document_page",
+            "message": "Page numbers start at 1.",
+        }
 
-    return {
-        "status": "NOT_CONNECTED",
-        "tool": "read_document_page",
-        "document_id": document_id,
-        "page": page,
-        "message": (
-            "Document page retrieval will be connected to the "
-            "Docling processed document store."
-        ),
-    }
+    session = SessionLocal()
+    try:
+        repository = DocumentRepository(session)
+        document = repository.get_document(document_id)
+
+        if document is None:
+            return {
+                "status": "NOT_FOUND",
+                "tool": "read_document_page",
+                "document_id": document_id,
+                "page": page,
+                "message": "Document was not found in the ingestion database.",
+            }
+
+        chunks = repository.get_document_page_chunks(document_id, page)
+
+        if not chunks:
+            return {
+                "status": "NOT_FOUND",
+                "tool": "read_document_page",
+                "document_id": document_id,
+                "document_name": document.file_name,
+                "page": page,
+                "message": (
+                    "No persisted chunks were found for this page. "
+                    "The page may be absent or the document may need re-ingestion."
+                ),
+            }
+
+        return {
+            "status": "OK",
+            "tool": "read_document_page",
+            "document_id": document.id,
+            "document_name": document.file_name,
+            "page": page,
+            "chunks": [
+                {
+                    "chunk_index": chunk.chunk_index,
+                    "section": chunk.section,
+                    "content": chunk.content,
+                }
+                for chunk in chunks
+            ],
+            "content": "\n\n".join(chunk.content for chunk in chunks),
+        }
+    finally:
+        session.close()
 
 
 def extract_financial_table(
     document_id: str,
     table_description: str,
 ) -> dict[str, Any]:
-    """
-    Retrieve a structured financial table from a document.
+    """Retrieve a persisted Docling table matching a description."""
 
-    Qwen3 decides whether a table is required and describes what
-    it needs.
-    """
-
-    return {
-        "status": "NOT_CONNECTED",
-        "tool": "extract_financial_table",
-        "document_id": document_id,
-        "table_description": table_description,
-        "message": (
-            "Structured table extraction will be connected to the "
-            "Docling document representation."
-        ),
-    }
-
-
-def calculate_metric(
-    expression: str,
-) -> dict[str, Any]:
-    """
-    Deterministic financial calculation tool.
-
-    The agent chooses the expression.
-    Python performs the arithmetic.
-    """
-
+    session = SessionLocal()
     try:
-        allowed = set(
-            "0123456789.+-*/()% "
-        )
+        repository = DocumentRepository(session)
+        document = repository.get_document(document_id)
+
+        if document is None:
+            return {
+                "status": "NOT_FOUND",
+                "tool": "extract_financial_table",
+                "document_id": document_id,
+                "message": "Document was not found in the ingestion database.",
+            }
+
+        tables = repository.get_document_tables(document_id)
+
+        if not tables:
+            return {
+                "status": "NOT_FOUND",
+                "tool": "extract_financial_table",
+                "document_id": document_id,
+                "document_name": document.file_name,
+                "message": (
+                    "No persisted tables exist for this document. "
+                    "Re-ingest it after table persistence is enabled."
+                ),
+            }
+
+        query_terms = {
+            token.lower()
+            for token in re.findall(r"[a-zA-Z0-9]+", table_description or "")
+            if len(token) > 1
+        }
+
+        def score(table):
+            text_terms = {
+                token.lower()
+                for token in re.findall(r"[a-zA-Z0-9]+", table.content)
+                if len(token) > 1
+            }
+            section_terms = {
+                token.lower()
+                for token in re.findall(r"[a-zA-Z0-9]+", table.section or "")
+                if len(token) > 1
+            }
+            return len(query_terms & (text_terms | section_terms))
+
+        ranked = sorted(tables, key=score, reverse=True)
+        best_score = score(ranked[0]) if ranked else 0
+
+        if table_description.strip() and best_score == 0 and len(tables) > 1:
+            return {
+                "status": "NOT_FOUND",
+                "tool": "extract_financial_table",
+                "document_id": document.id,
+                "document_name": document.file_name,
+                "table_description": table_description,
+                "available_tables": [
+                    {
+                        "table_index": table.table_index,
+                        "page_number": table.page_number,
+                        "section": table.section,
+                    }
+                    for table in tables
+                ],
+                "message": (
+                    "No table matched the description. Choose from the "
+                    "available table metadata rather than assuming a match."
+                ),
+            }
+
+        selected = ranked[0]
+        return {
+            "status": "OK",
+            "tool": "extract_financial_table",
+            "document_id": document.id,
+            "document_name": document.file_name,
+            "table_index": selected.table_index,
+            "page_number": selected.page_number,
+            "section": selected.section,
+            "table_description": table_description,
+            "content": selected.content,
+            "match_score": best_score,
+        }
+    finally:
+        session.close()
+
+
+def calculate_metric(expression: str) -> dict[str, Any]:
+    try:
+        allowed = set("0123456789.+-*/()% ")
 
         if not expression or any(
             character not in allowed
@@ -102,9 +207,7 @@ def calculate_metric(
 
         result = eval(
             expression,
-            {
-                "__builtins__": {},
-            },
+            {"__builtins__": {}},
             {},
         )
 
@@ -129,11 +232,6 @@ def compare_periods(
     period_b: str,
     value_b: float,
 ) -> dict[str, Any]:
-    """
-    Deterministically compare two values.
-
-    The agent decides which metric and periods matter.
-    """
 
     if value_a == 0:
         percentage_change = None
@@ -161,11 +259,6 @@ def reconcile_values(
     source_b: str,
     value_b: float,
 ) -> dict[str, Any]:
-    """
-    Compare values reported by different sources.
-
-    The agent decides which values need reconciliation.
-    """
 
     difference = value_a - value_b
 
@@ -186,22 +279,20 @@ def search_evidence(
     project_id: str,
     limit: int = 10,
 ) -> dict[str, Any]:
-    """
-    Search for supporting evidence across the project.
 
-    This will later use the shared evidence/retrieval layer.
-    """
+    results = _search_service.search(
+        query=query,
+        project_id=project_id,
+        limit=limit,
+    )
 
     return {
-        "status": "NOT_CONNECTED",
+        "status": "OK",
         "tool": "search_evidence",
-        "project_id": project_id,
         "query": query,
-        "limit": limit,
-        "message": (
-            "Evidence retrieval will be connected to PostgreSQL "
-            "and pgvector."
-        ),
+        "project_id": project_id,
+        "results": results,
+        "result_count": len(results),
     }
 
 
@@ -215,11 +306,6 @@ def record_finding(
     evidence: list[dict[str, Any]],
     recommended_action: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Record a finding produced by the agent.
-
-    Persistence will later be handled by the findings repository.
-    """
 
     return {
         "status": "READY_FOR_PERSISTENCE",

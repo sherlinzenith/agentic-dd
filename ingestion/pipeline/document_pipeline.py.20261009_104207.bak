@@ -93,16 +93,6 @@ class DocumentIngestionPipeline:
                     embedding=embedding,
                 )
 
-
-            for table in processed.get("tables") or []:
-                repository.create_table(
-                    document_id=document.id,
-                    table_index=table["table_index"],
-                    content=table["content"],
-                    page_number=table.get("page_number"),
-                    section=table.get("section"),
-                )
-
             repository.save()
 
             return {

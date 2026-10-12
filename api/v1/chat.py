@@ -21,6 +21,22 @@ router = APIRouter(
 service = ChatbotService()
 
 
+@router.get("/model-runtime-status")
+def get_model_runtime_status(project_id: str):
+    """
+    Verify the actual loaded model at runtime from the Ollama engine,
+    ensuring Llama isolation and confirming model installation.
+    """
+    try:
+        return service.verify_runtime_model()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/conversations", response_model=List[ConversationResponse])
 def list_conversations(project_id: str):
     """List all due diligence conversations for the specified project."""

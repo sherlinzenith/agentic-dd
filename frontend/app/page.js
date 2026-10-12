@@ -2329,7 +2329,7 @@ export default function DueDiligenceApp() {
                     </h3>
                   </div>
                   <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "2px" }}>
-                    Grounding on {documents.length} project documents and {findings.length} findings • Qwen3 (11434)
+                    Grounding on {documents.length} project documents and {findings.length} findings • Llama 3.3 (11434)
                   </div>
                 </div>
 

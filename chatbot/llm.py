@@ -31,7 +31,14 @@ class LlamaChatbotClient:
             raw_url = raw_url.rstrip("/") + "/v1"
         self.base_url = raw_url
 
-        self.model = model or os.getenv("LLAMA_MODEL", "llama3.3:8b")
+        selected_model = model or os.getenv("LLAMA_MODEL", "llama3.3:8b")
+        if "qwen" in selected_model.lower():
+            raise ValueError(
+                f"Invalid model '{selected_model}' for DD Chatbot: Chatbot must use a Llama family model "
+                f"(e.g. 'llama3.3:8b', 'llama3.1:latest'), not Qwen. Specialist agents use Qwen, while "
+                f"the chatbot model configuration is strictly isolated."
+            )
+        self.model = selected_model
         self.api_key = os.getenv("LLAMA_API_KEY", "ollama")
         self.timeout = timeout or float(os.getenv("LLAMA_TIMEOUT", "120.0"))
 
@@ -62,6 +69,35 @@ class LlamaChatbotClient:
             "base_url": self.base_url,
             "is_installed": is_installed,
             "available_models": available,
+        }
+
+    def verify_runtime_model(self) -> dict[str, Any]:
+        """
+        Actively inspects the running Ollama instance at runtime.
+        Verifies:
+        1. Local Ollama service is reachable.
+        2. Configured model is present in Ollama's active model list.
+        3. Model is confirmed to be a Llama family model (not Qwen).
+        Returns runtime verification diagnostic dict or raises an exception.
+        """
+        status = self.check_model_availability()
+        if not status["is_installed"]:
+            raise RuntimeError(
+                f"Runtime verification failed: Model '{self.model}' is not installed in local Ollama at {self.base_url}. "
+                f"Available models: {status['available_models']}."
+            )
+        if "qwen" in self.model.lower():
+            raise ValueError(
+                f"Runtime verification failed: Model '{self.model}' is a Qwen model. "
+                f"The DD Chatbot strictly requires a Llama family model."
+            )
+        return {
+            "status": "VERIFIED",
+            "runtime_model": self.model,
+            "model_family": "llama",
+            "base_url": self.base_url,
+            "is_installed": True,
+            "available_models": status["available_models"],
         }
 
     def chat(

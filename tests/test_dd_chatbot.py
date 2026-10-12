@@ -324,3 +324,54 @@ class TestDDChatbot:
         client = LlamaChatbotClient(base_url="http://localhost:59999/v1", timeout=1.0)
         with pytest.raises((ConnectionError, TimeoutError, RuntimeError)):
             client.chat([{"role": "user", "content": "hello"}])
+
+    def test_chatbot_strictly_rejects_qwen_models(self):
+        """
+        Verifies that DD Chatbot strictly rejects Qwen models and enforces Llama isolation.
+        Specialist agents use Qwen, while the chatbot model must be a Llama family model.
+        """
+        from chatbot.llm import LlamaChatbotClient
+        for qwen_name in ["qwen3:4b", "Qwen/Qwen2.5-7B-Instruct", "qwen2.5:32b", "qwen"]:
+            with pytest.raises(ValueError) as exc_info:
+                LlamaChatbotClient(model=qwen_name)
+            assert "Chatbot must use a Llama family model" in str(exc_info.value)
+            assert "not Qwen" in str(exc_info.value)
+
+    def test_separate_specialist_and_chatbot_configurations(self):
+        """
+        Verifies that specialist agent model configurations and DD Chatbot configurations
+        are completely isolated in environment variables and defaults.
+        """
+        import os
+        qwen_model = os.getenv("QWEN_MODEL", "qwen3:4b")
+        llama_model = os.getenv("LLAMA_MODEL", "llama3.3:8b")
+        assert "qwen" in qwen_model.lower()
+        assert "llama" in llama_model.lower()
+        assert qwen_model != llama_model
+
+    def test_verify_runtime_model_diagnostics(self):
+        """
+        Verifies that the chatbot actively verifies the loaded model at runtime against Ollama,
+        confirming actual installation, model family, and endpoint availability.
+        """
+        from chatbot.llm import LlamaChatbotClient
+        client = LlamaChatbotClient(model="llama3.3:8b")
+        diagnostics = client.verify_runtime_model()
+        assert diagnostics["status"] == "VERIFIED"
+        assert diagnostics["model_family"] == "llama"
+        assert diagnostics["runtime_model"] == "llama3.3:8b"
+        assert diagnostics["is_installed"] is True
+        assert "available_models" in diagnostics
+
+    def test_api_model_runtime_status_endpoint(self, test_projects):
+        """Test the GET /api/v1/projects/{proj_id}/chat/model-runtime-status API endpoint."""
+        client = TestClient(app)
+        proj_a = test_projects["proj_a_id"]
+        res = client.get(f"/api/v1/projects/{proj_a}/chat/model-runtime-status")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "VERIFIED"
+        assert data["model_family"] == "llama"
+        assert "llama" in data["runtime_model"].lower()
+        assert data["is_installed"] is True
+

@@ -82,6 +82,13 @@ class ChatbotService:
             self._llm = LlamaChatbotClient()
         return self._llm
 
+    def verify_runtime_model(self) -> dict[str, Any]:
+        """
+        Actively inspects the running Ollama engine at runtime.
+        Returns runtime verification diagnostic dict or raises an exception.
+        """
+        return self.llm.verify_runtime_model()
+
     # ================================================================
     # CONVERSATION MANAGEMENT
     # ================================================================

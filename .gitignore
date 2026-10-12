@@ -16,6 +16,8 @@ venv/
 documents/
 results/
 workspaces/
+storage/
+test_reports_out/
 
 # AI models/cache
 models/
@@ -43,3 +45,8 @@ Thumbs.db
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+# Next.js frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/coverage/

@@ -152,3 +152,7 @@ class LegalAgent(BaseAgent):
             workstream="legal",
             objective=objective,
         )
+
+
+def create_legal_agent(max_iterations: int = 12) -> LegalAgent:
+    return LegalAgent(max_iterations=max_iterations)

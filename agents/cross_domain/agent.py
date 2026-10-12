@@ -132,6 +132,8 @@ class CrossDomainAgent(BaseAgent):
         project_id: str,
         investigation_id: str,
         objective: str,
+        initial_findings: list[dict] | None = None,
+        initial_evidence: list[dict] | None = None,
     ):
 
         return self.runner.run(
@@ -139,4 +141,10 @@ class CrossDomainAgent(BaseAgent):
             investigation_id=investigation_id,
             workstream="cross_domain",
             objective=objective,
+            initial_findings=initial_findings,
+            initial_evidence=initial_evidence,
         )
+
+
+def create_cross_domain_agent(max_iterations: int = 12) -> CrossDomainAgent:
+    return CrossDomainAgent(max_iterations=max_iterations)

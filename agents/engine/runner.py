@@ -33,6 +33,7 @@ class AgentRunner:
         state["iteration"] = iteration
 
         if iteration > self.max_iterations:
+            print(f"[AgentRunner] Max iterations reached ({self.max_iterations})", flush=True)
             state["status"] = "MAX_ITERATIONS"
             state["next_action"] = "finish"
             state["final_answer"] = (
@@ -42,12 +43,15 @@ class AgentRunner:
             )
             return state
 
+        print(f"[AgentRunner] Step {iteration}: invoking LLM...", flush=True)
         response = self.agent.invoke_llm(state)
-
-        return self.agent.process_response(
+        res_state = self.agent.process_response(
             state,
             response,
         )
+        tools_ran = len(res_state.get("tool_calls", []))
+        print(f"[AgentRunner] Step {iteration} complete: next_action={res_state.get('next_action')} (tools recorded: {tools_ran})", flush=True)
+        return res_state
 
     @staticmethod
     def _route(
@@ -88,6 +92,8 @@ class AgentRunner:
         investigation_id: str,
         workstream: str,
         objective: str,
+        initial_findings: list[dict] | None = None,
+        initial_evidence: list[dict] | None = None,
     ) -> AgentState:
 
         initial_state: AgentState = {
@@ -101,8 +107,8 @@ class AgentRunner:
             "tool_calls": [],
             "tool_results": [],
 
-            "evidence": [],
-            "findings": [],
+            "evidence": list(initial_evidence or []),
+            "findings": list(initial_findings or []),
 
             "missing_information": [],
             "unresolved_questions": [],

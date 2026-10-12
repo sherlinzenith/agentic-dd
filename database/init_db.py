@@ -1,4 +1,4 @@
-﻿from database.session import Base, engine
+from database.session import Base, engine
 
 # Register all models with the shared Base.
 
@@ -19,13 +19,25 @@ from findings.models import (
 )
 
 from evidence.models import Evidence
+from dd_requests.models import DDRequest
+from tasks.models import DDTask
+from reanalysis.models import DDReanalysisRun
+from chatbot.models import DDConversation, DDConversationMessage
 
 
 def init_db():
-
     Base.metadata.create_all(
         bind=engine
     )
+
+    # Idempotent migration for new columns on dd_evidence in existing databases
+    if engine.dialect.name == "postgresql":
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE dd_evidence ADD COLUMN IF NOT EXISTS validation_reason TEXT;"))
+            conn.execute(text("ALTER TABLE dd_evidence ADD COLUMN IF NOT EXISTS match_method VARCHAR(50);"))
+            conn.execute(text("ALTER TABLE dd_evidence ADD COLUMN IF NOT EXISTS confidence FLOAT;"))
+            conn.commit()
 
 
 if __name__ == "__main__":
@@ -35,7 +47,3 @@ if __name__ == "__main__":
     print(
         "Database tables initialized."
     )
-
-from dd_requests.models import DDRequest
-from tasks.models import DDTask
-from reanalysis.models import DDReanalysisRun

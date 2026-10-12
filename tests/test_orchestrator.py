@@ -37,6 +37,12 @@ def start(job, types=("financial",)):
 
 
 def test_orchestrator():
+    global tmp
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    fs.RESULTS_DIR = tmp
+    fs.FINDINGS_FILE = tmp / "findings.json"
+    fs.METRICS_FILE = tmp / "metrics.json"
+
     # 1. lead plans, financial workstream runs, job pauses for review
     start("DD-A")
     v = graph.get_state(cfg("DD-A")).values
@@ -141,4 +147,3 @@ def test_orchestrator():
 
 if __name__ == "__main__":
     test_orchestrator()
-

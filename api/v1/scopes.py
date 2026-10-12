@@ -72,3 +72,21 @@ def get_scope(
             status_code=500,
             detail=str(error),
         )
+
+
+@router.get("/{project_id}/scopes")
+def get_all_scopes(
+    project_id: str,
+):
+    try:
+        return {
+            "success": True,
+            "scopes": service.get_all_scopes(
+                project_id=project_id,
+            ),
+        }
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error),
+        )

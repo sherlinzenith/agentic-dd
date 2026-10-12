@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from fastapi import HTTPException
 
@@ -51,6 +51,33 @@ class FindingService:
         request_id = payload.get("request_id")
 
         evidence = self.repo.add_evidence(payload)
+
+        # Validate newly added evidence against project document chunks
+        from retrieval.repositories.document_repository import DocumentRepository
+        from services.evidence_validation_service import validate_single_evidence
+
+        doc_repo = DocumentRepository(self.repo.db)
+        raw_docs = doc_repo.list_documents(finding.project_id)
+        project_docs = {d.file_name.lower(): d for d in raw_docs}
+        doc_by_id = {d.id: d for d in raw_docs}
+
+        val_res = validate_single_evidence(
+            ev=evidence,
+            finding=finding,
+            doc_repo=doc_repo,
+            project_docs=project_docs,
+            doc_by_id=doc_by_id,
+        )
+        evidence.validation_status = val_res["status"]
+        evidence.validation_reason = val_res["reason"]
+        evidence.match_method = val_res["match_method"]
+        evidence.confidence = val_res["confidence"]
+        if val_res["chunk_id"]:
+            evidence.chunk_id = val_res["chunk_id"]
+        if val_res["page_number"] and not evidence.page_number:
+            evidence.page_number = val_res["page_number"]
+        if val_res["document_id"] and not evidence.document_id:
+            evidence.document_id = val_res["document_id"]
 
         # -----------------------------------------------------
         # EVIDENCE SUBMISSION -> REQUEST RESOLUTION

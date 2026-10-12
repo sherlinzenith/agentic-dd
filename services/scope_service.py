@@ -124,3 +124,13 @@ class ScopeService:
 
         finally:
             session.close()
+
+    def get_all_scopes(
+        self,
+        *,
+        project_id: str,
+    ) -> dict[str, dict]:
+        return {
+            ws: self.get_scope(project_id=project_id, workstream=ws)
+            for ws in self.DEFAULT_SCOPES
+        }

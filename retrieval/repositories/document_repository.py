@@ -57,6 +57,13 @@ class DocumentRepository:
     def get_document(self, document_id: str) -> Document | None:
         return self.session.get(Document, document_id)
 
+    def list_documents(self, project_id: str | None = None) -> Sequence[Document]:
+        statement = select(Document)
+        if project_id:
+            statement = statement.where(Document.project_id == project_id)
+        statement = statement.order_by(Document.created_at.desc())
+        return self.session.scalars(statement).all()
+
     def get_document_chunks(
         self,
         document_id: str,

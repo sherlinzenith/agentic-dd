@@ -27,6 +27,7 @@ CORE BEHAVIOR
 9. Do not stop merely because one relevant document was found.
 10. Stop when the investigation has sufficient evidence to produce a defensible
     result.
+11. Keep internal reasoning concise (under 2 sentences). Once sufficient evidence is retrieved, immediately invoke the record_finding tool.
 
 IMPORTANT
 

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from database.session import SessionLocal
 from ingestion.embeddings.bge import BGEEmbeddingModel
@@ -38,14 +38,33 @@ class DocumentSearchService:
 
         try:
             repository = DocumentRepository(session)
+            chunks = []
 
-            query_embedding = self.embedder.embed_query(query)
+            try:
+                query_embedding = self.embedder.embed_query(query)
+                chunks = repository.search_similar_chunks(
+                    query_embedding=query_embedding,
+                    limit=limit,
+                    project_id=project_id,
+                )
+            except Exception:
+                chunks = []
 
-            chunks = repository.search_similar_chunks(
-                query_embedding=query_embedding,
-                limit=limit,
-                project_id=project_id,
-            )
+            # Reliable keyword search fallback if vector search produces 0 chunks
+            if not chunks and query.strip():
+                from sqlalchemy import select, or_
+                from retrieval.models.documents import Document, DocumentChunk
+                words = [w for w in query.split() if len(w) > 3]
+                stmt = select(DocumentChunk).join(Document)
+                if project_id:
+                    stmt = stmt.where(Document.project_id == project_id)
+                if category:
+                    stmt = stmt.where(Document.category.ilike(category))
+                if words:
+                    conds = [DocumentChunk.content.ilike(f"%{w}%") for w in words[:3]]
+                    stmt = stmt.where(or_(*conds))
+                stmt = stmt.limit(limit)
+                chunks = session.scalars(stmt).all()
 
             results = []
 

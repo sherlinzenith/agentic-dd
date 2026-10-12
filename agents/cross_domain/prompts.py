@@ -28,6 +28,7 @@ CORE BEHAVIOR
 10. Continue investigating when an important relationship remains unresolved.
 11. Stop when the cross-domain investigation has sufficient evidence for a
     defensible result.
+12. Keep internal reasoning concise (under 2 sentences). Once sufficient evidence is retrieved, immediately invoke the record_cross_domain_finding tool.
 
 IMPORTANT
 

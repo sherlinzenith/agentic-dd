@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from .llm import QwenClient
@@ -43,7 +44,12 @@ class BaseAgent:
             state.get("messages", [])
         )
 
-        if not messages or messages[-1].get("role") != "user":
+        has_user_message = any(
+            m.get("role") == "user"
+            for m in messages
+        )
+
+        if not has_user_message:
             messages.append(
                 {
                     "role": "user",
@@ -117,9 +123,11 @@ class BaseAgent:
             or []
         )
 
+        assistant_content = message.content or ""
+
         assistant_message: dict[str, Any] = {
             "role": "assistant",
-            "content": message.content or "",
+            "content": assistant_content,
         }
 
         if tool_calls:
@@ -196,6 +204,29 @@ class BaseAgent:
                     }
                 )
 
+                # Auto-inject project_id and investigation_id from state if tool supports them
+                if isinstance(arguments, dict):
+                    tool_obj = self.tools._tools.get(call.function.name)
+                    if tool_obj:
+                        tool_props = tool_obj.parameters.get("properties", {})
+                        if "project_id" in tool_props:
+                            if not arguments.get("project_id") or arguments.get("project_id") == "REAL-INGESTION-TEST":
+                                if state.get("project_id"):
+                                    arguments["project_id"] = state["project_id"]
+                        if "investigation_id" in tool_props:
+                            if not arguments.get("investigation_id"):
+                                if state.get("investigation_id"):
+                                    arguments["investigation_id"] = state["investigation_id"]
+
+                    # If tool argument has a nested 'finding' dictionary, inject into it as well
+                    if "finding" in arguments and isinstance(arguments["finding"], dict):
+                        if not arguments["finding"].get("project_id") or arguments["finding"].get("project_id") == "REAL-INGESTION-TEST":
+                            if state.get("project_id"):
+                                arguments["finding"]["project_id"] = state["project_id"]
+                        if not arguments["finding"].get("investigation_id"):
+                            if state.get("investigation_id"):
+                                arguments["finding"]["investigation_id"] = state["investigation_id"]
+
                 # Python executes ONLY the tool selected by Qwen3.
                 try:
                     result = self.tools.execute(
@@ -242,9 +273,38 @@ class BaseAgent:
         # No tool call = Qwen3 decided the investigation can finish.
         # ---------------------------------------------------------
 
-        state["final_answer"] = (
-            message.content or ""
-        )
+        content = (message.content or "").strip()
+        reasoning = getattr(message, "reasoning", "") or getattr(message, "reasoning_content", "") or ""
+
+        if content:
+            state["final_answer"] = content
+        else:
+            # If the model exhausted tokens or placed a structured result in reasoning,
+            # attempt to extract a clean conclusion or JSON block without exposing raw chain-of-thought.
+            extracted_conclusion = None
+            if reasoning:
+                # Check for explicit conclusion or final answer markers
+                match = re.search(r"(?:Final Answer|Conclusion|In summary|Summary):\s*(.+?)(?:\n\n|\Z)", reasoning, re.DOTALL | re.IGNORECASE)
+                if match:
+                    extracted_conclusion = match.group(1).strip()
+                elif "{" in reasoning and "}" in reasoning:
+                    try:
+                        start = reasoning.find("{")
+                        end = reasoning.rfind("}")
+                        parsed = json.loads(reasoning[start:end+1])
+                        if isinstance(parsed, dict) and ("findings" in parsed or "summary" in parsed):
+                            extracted_conclusion = json.dumps(parsed, indent=2)
+                    except Exception:
+                        pass
+
+            if extracted_conclusion:
+                state["final_answer"] = extracted_conclusion
+            else:
+                workstream_label = state.get("workstream", "due diligence").capitalize()
+                state["final_answer"] = (
+                    f"{workstream_label} agent investigation concluded. "
+                    "Review recorded findings, metrics, and validated evidence in the diligence register."
+                )
 
         state["next_action"] = "finish"
 

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from retrieval.models.investigations import DDInvestigation
 
@@ -55,6 +55,36 @@ class InvestigationRepository:
         self.session.flush()
 
         return investigation
+
+    def update_status(
+        self,
+        investigation_id: str,
+        status: str,
+        plan: dict | None = None,
+    ) -> DDInvestigation | None:
+        investigation = self.get(investigation_id)
+        if investigation is None:
+            return None
+
+        investigation.status = status
+        if plan is not None:
+            investigation.plan = plan
+
+        self.session.flush()
+        return investigation
+
+    def get_latest_for_project(
+        self,
+        project_id: str,
+    ) -> DDInvestigation | None:
+        from sqlalchemy import select
+        stmt = (
+            select(DDInvestigation)
+            .where(DDInvestigation.project_id == project_id)
+            .order_by(DDInvestigation.created_at.desc())
+            .limit(1)
+        )
+        return self.session.scalars(stmt).first()
 
     def save(self) -> None:
         self.session.commit()

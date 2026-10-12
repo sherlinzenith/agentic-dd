@@ -10,15 +10,15 @@ fa._ask_model = lambda prompt: (None, "test: no model")
 
 def test_lead():
     assert plan_types(["Financial"]) == ["financial"]
-    assert plan_types(["legal", "financial", "financial"]) == ["financial"]
+    assert plan_types(["tax", "financial", "financial"]) == ["financial"]
     try:
-        plan_types(["legal"])
-        raise SystemExit("legal-only should have failed")
+        plan_types(["tax"])
+        raise SystemExit("tax-only should have failed")
     except ValueError:
         pass
 
-    out = lead_node({"dd_types": ["legal", "financial"]})
-    assert out["plan"] == ["financial"] and any("legal" in n for n in out["lead_notes"])
+    out = lead_node({"dd_types": ["tax", "financial"]})
+    assert out["plan"] == ["financial"] and any("tax" in n for n in out["lead_notes"])
     assert route_after_lead(out) == "classify"
     assert lead_node({})["plan"] == ["financial"]
     print("1 ok  lead agent plans and skips unavailable types")
@@ -32,7 +32,7 @@ def test_lead():
         "documents": extract_all_documents("documents"),
 
         "findings": [], "status": "STARTED",
-        "dd_types": ["legal", "financial"],
+        "dd_types": ["tax", "financial"],
     })
     assert r["plan"] == ["financial"] and len(r["findings"]) == 1, r
     print("2 ok  graph runs the Financial agent through the lead agent")
@@ -42,4 +42,3 @@ def test_lead():
 
 if __name__ == "__main__":
     test_lead()
-

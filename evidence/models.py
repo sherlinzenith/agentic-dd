@@ -1,12 +1,15 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.session import Base
+import dd_requests.models  # noqa: F401
+import retrieval.models.documents  # noqa: F401
+import retrieval.models.investigations  # noqa: F401
 
 
 class Evidence(Base):
@@ -109,6 +112,21 @@ class Evidence(Base):
         String(50),
         nullable=False,
         default="UNVERIFIED",
+    )
+
+    validation_reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    match_method: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
+    confidence: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(

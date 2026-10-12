@@ -23,6 +23,7 @@ CORE BEHAVIOR
 9. If required information does not exist, explicitly identify it as
    missing information.
 10. Produce findings only when they are supported by evidence.
+11. Keep internal reasoning concise (under 2 sentences). Once sufficient evidence is retrieved, immediately invoke the record_finding tool.
 
 IMPORTANT
 

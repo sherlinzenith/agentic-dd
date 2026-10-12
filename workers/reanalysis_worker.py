@@ -65,6 +65,27 @@ class ReanalysisWorker:
         else:
             raise ValueError(f"No DD agent configured for workstream: '{workstream}'")
 
+    def recover_stale_jobs(self, db) -> int:
+        """
+        Recover any orphaned jobs left in RUNNING status from previous server crashes or restarts.
+        Resets them to QUEUED so they can be processed and completed cleanly.
+        """
+        stale_runs = (
+            db.query(DDReanalysisRun)
+            .filter(DDReanalysisRun.status == "RUNNING")
+            .all()
+        )
+        recovered = 0
+        for run in stale_runs:
+            logger.warning(f"Recovering orphaned reanalysis run '{run.id}' from RUNNING to QUEUED.")
+            run.status = "QUEUED"
+            run.started_at = None
+            recovered += 1
+
+        if recovered > 0:
+            db.commit()
+        return recovered
+
     def get_next_run(self, db) -> DDReanalysisRun | None:
         """Fetch the oldest queued re-analysis run."""
         return (
@@ -311,6 +332,18 @@ def start_background_worker(poll_interval: float = 3.0):
     global _worker_thread
     if _worker_thread is not None and _worker_thread.is_alive():
         return
+
+    # Recover any stale jobs left behind in RUNNING status on server boot
+    db = SessionLocal()
+    try:
+        worker = ReanalysisWorker()
+        recovered = worker.recover_stale_jobs(db)
+        if recovered > 0:
+            logger.info(f"Startup recovery: Reset {recovered} stale job(s) from RUNNING to QUEUED.")
+    except Exception as exc:
+        logger.error(f"Error during startup job recovery: {exc}")
+    finally:
+        db.close()
 
     _stop_event.clear()
     _worker_thread = threading.Thread(

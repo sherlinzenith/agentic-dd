@@ -301,3 +301,26 @@ class TestHumanReviewAndReanalysis(unittest.TestCase):
         resp_list = self.client.get(f"/api/v1/reanalysis/project/{self.project_id}")
         self.assertEqual(resp_list.status_code, 200)
         self.assertGreaterEqual(len(resp_list.json()), 1)
+
+    def test_recover_stale_jobs_resets_orphaned_runs_to_queued(self):
+        """Test that orphaned runs left in RUNNING status from previous server crashes are recovered to QUEUED."""
+        stale_run = DDReanalysisRun(
+            id="run-stale-test-1",
+            project_id=self.project_id,
+            finding_id=self.finding.id,
+            trigger_type="HUMAN_REVIEW",
+            status="RUNNING",
+            started_at=datetime.utcnow(),
+        )
+        self.session.add(stale_run)
+        self.session.commit()
+
+        worker = ReanalysisWorker()
+        recovered = worker.recover_stale_jobs(self.session)
+
+        self.assertGreaterEqual(recovered, 1)
+        self.session.expire_all()
+        reloaded = self.session.get(DDReanalysisRun, "run-stale-test-1")
+        self.assertEqual(reloaded.status, "QUEUED")
+        self.assertIsNone(reloaded.started_at)
+

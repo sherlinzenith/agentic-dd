@@ -78,7 +78,8 @@ class NumberedCanvas(canvas.Canvas):
 
         # Running Header (pages > 1)
         if self._pageNumber > 1:
-            self.drawString(54, 750, "CONFIDENTIAL & PRIVILEGED — DUE DILIGENCE REPORT")
+            header_text = getattr(self, "header_classification", "CONFIDENTIAL — DUE DILIGENCE REPORT")
+            self.drawString(54, 750, header_text)
             self.setStrokeColor(colors.HexColor("#e2e8f0"))
             self.setLineWidth(0.5)
             self.line(54, 744, 558, 744)
@@ -106,7 +107,12 @@ class ReportService:
     cohesive structured JSON and executive-ready PDF documents.
     """
 
-    def compile_report(self, project_id: str, session: Optional[Session] = None) -> DueDiligenceReport:
+    def compile_report(
+        self,
+        project_id: str,
+        session: Optional[Session] = None,
+        legal_privilege: bool = False,
+    ) -> DueDiligenceReport:
         """
         Compiles the complete, project-isolated Due Diligence report from PostgreSQL records.
         """
@@ -117,6 +123,12 @@ class ReportService:
             if not project:
                 raise ValueError(f"Project '{project_id}' not found.")
 
+            classification = (
+                "CONFIDENTIAL & PRIVILEGED — DUE DILIGENCE REPORT"
+                if legal_privilege
+                else "CONFIDENTIAL — DUE DILIGENCE REPORT"
+            )
+
             metadata = ReportMetadata(
                 project_id=project.id,
                 project_name=project.name,
@@ -126,6 +138,8 @@ class ReportService:
                 diligence_period=project.diligence_period or "N/A",
                 description=project.description,
                 status=project.status,
+                legal_privilege=legal_privilege,
+                classification=classification,
                 generated_at=datetime.utcnow(),
             )
 
@@ -297,19 +311,21 @@ class ReportService:
                 .all()
             )
             for req in requests:
-                outstanding_items.append(
-                    ReportOutstandingItem(
-                        item_type="request",
-                        id=req.id,
-                        title=req.title,
-                        description=req.description,
-                        status=req.status,
-                        priority=req.priority,
-                        requested_from_or_assigned_to=req.requested_from,
-                        due_at=req.due_at,
-                        created_at=req.created_at,
+                req_st = (req.status or "OPEN").upper()
+                if req_st not in ["RESOLVED", "FULFILLED", "CLOSED", "CANCELLED"]:
+                    outstanding_items.append(
+                        ReportOutstandingItem(
+                            item_type="request",
+                            id=req.id,
+                            title=req.title,
+                            description=req.description,
+                            status=req.status,
+                            priority=req.priority,
+                            requested_from_or_assigned_to=req.requested_from,
+                            due_at=req.due_at,
+                            created_at=req.created_at,
+                        )
                     )
-                )
 
             tasks = (
                 local_session.query(DDTask)
@@ -317,7 +333,8 @@ class ReportService:
                 .all()
             )
             for t in tasks:
-                if t.status != "COMPLETED":
+                t_st = (t.status or "TODO").upper()
+                if t_st not in ["DONE", "COMPLETED", "RESOLVED", "CANCELLED"]:
                     outstanding_items.append(
                         ReportOutstandingItem(
                             item_type="task",
@@ -521,11 +538,22 @@ class ReportService:
             textColor=colors.HexColor("#0f172a"),
         )
 
+        classification_style = ParagraphStyle(
+            "DocClassification",
+            parent=styles["Normal"],
+            fontName="Helvetica-Bold",
+            fontSize=9,
+            leading=12,
+            textColor=colors.HexColor("#4338ca") if not report.metadata.legal_privilege else colors.HexColor("#b91c1c"),
+            spaceAfter=6,
+        )
+
         story = []
 
         # -------------------------------------------------------------
         # 1. TITLE & TRANSACTION PROFILE
         # -------------------------------------------------------------
+        story.append(Paragraph(report.metadata.classification.upper(), classification_style))
         story.append(Paragraph("DUE DILIGENCE INVESTIGATION REPORT", title_style))
         story.append(
             Paragraph(
@@ -689,6 +717,19 @@ class ReportService:
                     card_flowables.append(Spacer(1, 4))
                     card_flowables.append(ev_table)
 
+                # Review History Audit Trail
+                if f.reviews:
+                    rv_entries = []
+                    for rv in f.reviews:
+                        date_str = rv.reviewed_at.strftime("%b %d, %Y") if hasattr(rv.reviewed_at, "strftime") else str(rv.reviewed_at)
+                        comment_text = f"<br/><b>Note:</b> {rv.comments}" if rv.comments else ""
+                        rv_entries.append(
+                            f"&bull; <b>{rv.reviewer_name or 'Human Reviewer'}</b> &mdash; <b>{rv.action}</b> ({date_str}){comment_text}"
+                        )
+                    rv_html = "<br/>".join(rv_entries)
+                    card_flowables.append(Spacer(1, 4))
+                    card_flowables.append(Paragraph(f"<b>Human Review History:</b><br/>{rv_html}", table_cell_style))
+
                 card_flowables.append(Spacer(1, 8))
                 story.append(KeepTogether(card_flowables))
 
@@ -738,6 +779,11 @@ class ReportService:
         for lim in report.limitations:
             story.append(Paragraph(f"&bull; {lim}", body_style))
 
-        # Build PDF with two-pass canvas
-        doc.build(story, canvasmaker=NumberedCanvas)
+        # Build PDF with two-pass canvas dynamically configured with classification
+        report_classification = report.metadata.classification or "CONFIDENTIAL — DUE DILIGENCE REPORT"
+
+        class CustomNumberedCanvas(NumberedCanvas):
+            header_classification = report_classification
+
+        doc.build(story, canvasmaker=CustomNumberedCanvas)
         return buf.getvalue()

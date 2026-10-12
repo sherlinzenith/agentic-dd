@@ -34,13 +34,13 @@ def _safe_filename(name: str) -> str:
 
 
 @router.get("/preview", response_model=DueDiligenceReport)
-def preview_report(project_id: str, db: Session = Depends(get_db)):
+def preview_report(project_id: str, legal_privilege: bool = False, db: Session = Depends(get_db)):
     """
     Compiles and returns the full structured Due Diligence report for the project.
     Can be used for interactive dashboard preview and verification.
     """
     try:
-        report = report_service.compile_report(project_id=project_id, session=db)
+        report = report_service.compile_report(project_id=project_id, session=db, legal_privilege=legal_privilege)
         return report
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
@@ -50,12 +50,12 @@ def preview_report(project_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/export/json")
-def export_report_json(project_id: str, db: Session = Depends(get_db)):
+def export_report_json(project_id: str, legal_privilege: bool = False, db: Session = Depends(get_db)):
     """
     Exports the Due Diligence report as a downloadable JSON file.
     """
     try:
-        report = report_service.compile_report(project_id=project_id, session=db)
+        report = report_service.compile_report(project_id=project_id, session=db, legal_privilege=legal_privilege)
         data = report_service.generate_json(report)
         json_bytes = json.dumps(data, indent=2, default=str).encode("utf-8")
         filename = f"{_safe_filename(report.metadata.target_company)}_dd_report.json"
@@ -75,12 +75,12 @@ def export_report_json(project_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/export/pdf")
-def export_report_pdf(project_id: str, db: Session = Depends(get_db)):
+def export_report_pdf(project_id: str, legal_privilege: bool = False, db: Session = Depends(get_db)):
     """
     Exports the Due Diligence report as an executive-ready, downloadable PDF document.
     """
     try:
-        report = report_service.compile_report(project_id=project_id, session=db)
+        report = report_service.compile_report(project_id=project_id, session=db, legal_privilege=legal_privilege)
         pdf_bytes = report_service.generate_pdf(report)
         filename = f"{_safe_filename(report.metadata.target_company)}_dd_report.pdf"
 

@@ -14,6 +14,8 @@ class ReportMetadata(BaseModel):
     diligence_period: Optional[str] = "N/A"
     description: Optional[str] = None
     status: str
+    legal_privilege: bool = False
+    classification: str = "CONFIDENTIAL — DUE DILIGENCE REPORT"
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
 

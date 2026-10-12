@@ -329,3 +329,104 @@ class TestDueDiligenceReport:
         # 4. 404 for missing project
         bad_res = client.get("/api/v1/projects/DOES-NOT-EXIST-PROJ/reports/preview")
         assert bad_res.status_code == 404
+
+    def test_default_classification_is_confidential_due_diligence_report(self, populated_report_project):
+        """
+        Verifies that reports default to 'CONFIDENTIAL — DUE DILIGENCE REPORT'
+        rather than claiming legal privilege without establishment.
+        """
+        proj_id = populated_report_project["proj_id"]
+        service = ReportService()
+        report = service.compile_report(project_id=proj_id)
+
+        assert report.metadata.legal_privilege is False
+        assert report.metadata.classification == "CONFIDENTIAL — DUE DILIGENCE REPORT"
+
+        # Verify in PDF bytes
+        import pypdf
+        pdf_bytes = service.generate_pdf(report)
+        reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+        full_text = "\n".join(page.extract_text() for page in reader.pages)
+        assert "CONFIDENTIAL" in full_text
+        assert "DUE DILIGENCE REPORT" in full_text
+
+    def test_legal_privilege_established_classification(self, populated_report_project):
+        """
+        Verifies that when legal privilege is explicitly established,
+        the classification upgrades to 'CONFIDENTIAL & PRIVILEGED — DUE DILIGENCE REPORT'.
+        """
+        import pypdf
+        proj_id = populated_report_project["proj_id"]
+        service = ReportService()
+        report = service.compile_report(project_id=proj_id, legal_privilege=True)
+
+        assert report.metadata.legal_privilege is True
+        assert report.metadata.classification == "CONFIDENTIAL & PRIVILEGED — DUE DILIGENCE REPORT"
+
+        pdf_bytes = service.generate_pdf(report)
+        reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+        full_text = "\n".join(page.extract_text() for page in reader.pages)
+        assert "PRIVILEGED" in full_text
+        assert "CONFIDENTIAL & PRIVILEGED" in full_text
+
+    def test_outstanding_items_filtering_of_completed_tasks_and_requests(self, populated_report_project):
+        """
+        Verifies that completed tasks (DONE) and resolved requests (RESOLVED) are excluded
+        from outstanding items, while open items are preserved.
+        """
+        from dd_requests.models import DDRequest
+        from tasks.models import DDTask
+
+        proj_id = populated_report_project["proj_id"]
+        session = SessionLocal()
+
+        # Add 1 open task and 1 done task
+        open_task = DDTask(
+            project_id=proj_id,
+            title="Open Task: Inspect Vendor Invoices",
+            description="Verify top 5 vendor invoices for unauthorized markup.",
+            status="TODO",
+            priority="high",
+        )
+        done_task = DDTask(
+            project_id=proj_id,
+            title="Done Task: Confirm Articles of Incorporation",
+            description="Charter documents reviewed and archived.",
+            status="DONE",
+            priority="medium",
+        )
+        # Add 1 open request and 1 resolved request
+        open_req = DDRequest(
+            project_id=proj_id,
+            title="Open Request: 2025 Tax Returns",
+            description="Form 1120 requested from target CFO.",
+            status="OPEN",
+            priority="high",
+        )
+        resolved_req = DDRequest(
+            project_id=proj_id,
+            title="Resolved Request: Board Meeting Minutes",
+            description="Minutes delivered and reviewed.",
+            status="RESOLVED",
+            priority="low",
+        )
+        session.add_all([open_task, done_task, open_req, resolved_req])
+        session.commit()
+        session.close()
+
+        try:
+            service = ReportService()
+            report = service.compile_report(project_id=proj_id)
+
+            item_titles = [item.title for item in report.outstanding_items]
+            assert "Open Task: Inspect Vendor Invoices" in item_titles
+            assert "Open Request: 2025 Tax Returns" in item_titles
+            assert "Done Task: Confirm Articles of Incorporation" not in item_titles
+            assert "Resolved Request: Board Meeting Minutes" not in item_titles
+        finally:
+            cleanup = SessionLocal()
+            cleanup.query(DDTask).filter(DDTask.project_id == proj_id).delete()
+            cleanup.query(DDRequest).filter(DDRequest.project_id == proj_id).delete()
+            cleanup.commit()
+            cleanup.close()
+

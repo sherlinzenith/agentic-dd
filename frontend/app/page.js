@@ -36,7 +36,12 @@ import {
   Send,
   Trash2,
   User,
-  Download
+  Download,
+  ShieldCheck,
+  Activity,
+  Sparkles,
+  Sun,
+  Moon
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
@@ -44,6 +49,22 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api/v1";
 export default function DueDiligenceApp() {
   const [activeTab, setActiveTab] = useState("overview");
   const [projectId, setProjectId] = useState("");
+  const [theme, setTheme] = useState("light");
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("dd_theme") || "light" : "light";
+    setTheme(saved);
+    document.documentElement.setAttribute("data-theme", saved);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dd_theme", next);
+      document.documentElement.setAttribute("data-theme", next);
+    }
+  };
 
   // Projects & Scope States
   const [projectsList, setProjectsList] = useState([]);
@@ -563,6 +584,7 @@ export default function DueDiligenceApp() {
   };
 
   const handleCreateNewConversation = async (title = "New Due Diligence Chat") => {
+    if (!projectId) return;
     try {
       const res = await fetch(`${API_BASE}/projects/${projectId}/chat/conversations`, {
         method: "POST",
@@ -612,6 +634,10 @@ export default function DueDiligenceApp() {
 
     let convId = activeConversationId;
     try {
+      if (!projectId) {
+        throw new Error("Please select or create an active deal project before starting a chat.");
+      }
+
       if (!convId) {
         const createRes = await fetch(`${API_BASE}/projects/${projectId}/chat/conversations`, {
           method: "POST",
@@ -623,7 +649,8 @@ export default function DueDiligenceApp() {
           convId = createData.id;
           setActiveConversationId(convId);
         } else {
-          throw new Error("Failed to initialize conversation.");
+          const errData = await createRes.json().catch(() => ({}));
+          throw new Error(errData.detail || "Failed to initialize conversation. Please verify the backend service is running.");
         }
       }
 
@@ -877,7 +904,7 @@ export default function DueDiligenceApp() {
     e.preventDefault();
     if (!selectedFile) return;
     setUploading(true);
-    setUploadMessage("Processing document with Docling OCR & Qwen3 classification...");
+    setUploadMessage("Parsing document layout, extracting tabular datasets, and indexing workstream evidence...");
     const formData = new FormData();
     formData.append("file", selectedFile);
     formData.append("project_id", projectId);
@@ -933,35 +960,31 @@ export default function DueDiligenceApp() {
           <div className="logo-group">
             <div className="logo-badge">DD</div>
             <div className="logo-text">
-              <h1>Agentic AI Due Diligence</h1>
-              <p>Autonomous Multi-Agent Investigation Platform</p>
+              <h1>Agentic Due Diligence OS</h1>
+              <p>Enterprise Autonomous Diligence & Audit Platform</p>
             </div>
           </div>
 
           <div className="header-status-pills">
-            <div className="status-pill">
+            <div className="status-pill" style={{ borderColor: "rgba(16, 185, 129, 0.3)", color: "var(--emerald-text)" }}>
               <span className="pulse-dot"></span>
-              <span>pgvector : 5432</span>
+              <span>System Operational</span>
             </div>
-            <div className="status-pill">
-              <Cpu size={13} color="#6366f1" />
-              <span>Ollama Qwen3 : 11434</span>
+            <div className="status-pill" style={{ borderColor: "rgba(99, 102, 241, 0.25)", color: "var(--primary)" }}>
+              <ShieldCheck size={13} color="var(--primary)" />
+              <span>Confidential VDR</span>
             </div>
-            <div className="status-pill">
-              <Layers size={13} color="#06b6d4" />
-              <span>BGE-M3 (1024-d)</span>
-            </div>
-            <div className="status-pill" style={{ borderColor: "rgba(99, 102, 241, 0.4)", color: "#a5b4fc", display: "flex", alignItems: "center", gap: "8px", padding: "4px 10px" }}>
-              <Briefcase size={13} color="#818cf8" />
-              <strong>Project:</strong>
+            <div className="status-pill" style={{ borderColor: "rgba(99, 102, 241, 0.4)", color: "var(--primary)", display: "flex", alignItems: "center", gap: "8px", padding: "4px 10px" }}>
+              <Briefcase size={13} color="var(--primary)" />
+              <strong>Deal Project:</strong>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 style={{
-                  background: "#0f172a",
+                  background: "var(--bg-input)",
                   border: "1px solid rgba(99, 102, 241, 0.3)",
                   borderRadius: "6px",
-                  color: "#f8fafc",
+                  color: "var(--text-main)",
                   fontSize: "12px",
                   fontWeight: "600",
                   padding: "2px 6px",
@@ -982,28 +1005,37 @@ export default function DueDiligenceApp() {
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={openCreateProjectModal}
-                title="Create New Project"
+                title="Create New Deal Project"
                 style={{ padding: "2px 6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "3px" }}
               >
-                <Plus size={11} /> New
+                <Plus size={11} /> New Deal
               </button>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={openEditProjectModal}
-                title="Edit Project Configuration"
+                title="Edit Deal Scope & Settings"
                 style={{ padding: "2px 6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "3px" }}
               >
-                <Settings size={11} /> Edit
+                <Settings size={11} /> Settings
               </button>
             </div>
             {currentProject?.target_company && (
-              <div className="status-pill" style={{ borderColor: "rgba(16, 185, 129, 0.3)", color: "#34d399", display: "flex", alignItems: "center", gap: "6px" }}>
+              <div className="status-pill" style={{ borderColor: "rgba(16, 185, 129, 0.3)", color: "var(--emerald-text)", display: "flex", alignItems: "center", gap: "6px" }}>
                 <Building2 size={13} />
                 <span>Target: <strong>{currentProject.target_company}</strong></span>
                 {currentProject.deal_type && <span style={{ opacity: 0.7 }}>({currentProject.deal_type})</span>}
               </div>
             )}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="theme-toggle-btn"
+              title={`Switch to ${theme === "light" ? "Dark" : "Light"} mode`}
+            >
+              {theme === "light" ? <Moon size={13} /> : <Sun size={13} />}
+              <span>{theme === "light" ? "Dark Mode" : "Light Mode"}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -1015,31 +1047,31 @@ export default function DueDiligenceApp() {
             className={`nav-tab-btn ${activeTab === "overview" ? "active" : ""}`}
             onClick={() => setActiveTab("overview")}
           >
-            <SlidersHorizontal size={16} /> Overview
+            <SlidersHorizontal size={16} /> Deal Overview
           </button>
           <button
             className={`nav-tab-btn ${activeTab === "documents" ? "active" : ""}`}
             onClick={() => setActiveTab("documents")}
           >
-            <FileText size={16} /> Documents & Ingestion ({documents.length})
+            <FileText size={16} /> Virtual Data Room ({documents.length})
           </button>
           <button
             className={`nav-tab-btn ${activeTab === "search" ? "active" : ""}`}
             onClick={() => setActiveTab("search")}
           >
-            <Search size={16} /> Knowledge Base Search
+            <Search size={16} /> Evidence & Clause Search
           </button>
           <button
             className={`nav-tab-btn ${activeTab === "agents" ? "active" : ""}`}
             onClick={() => setActiveTab("agents")}
           >
-            <Bot size={16} /> Agent Investigation Lab
+            <Bot size={16} /> Workstream Audit Lab
           </button>
           <button
             className={`nav-tab-btn ${activeTab === "findings" ? "active" : ""}`}
             onClick={() => setActiveTab("findings")}
           >
-            <ShieldAlert size={16} /> Findings & Review ({findings.length})
+            <ShieldAlert size={16} /> Risk & Findings Matrix ({findings.length})
             {pendingReviewCount > 0 && (
               <span style={{ background: "#f59e0b", color: "#000", padding: "1px 6px", borderRadius: "10px", fontSize: "11px", fontWeight: "bold" }}>
                 {pendingReviewCount}
@@ -1050,32 +1082,209 @@ export default function DueDiligenceApp() {
             className={`nav-tab-btn ${activeTab === "chat" ? "active" : ""}`}
             onClick={() => setActiveTab("chat")}
           >
-            <MessageSquare size={16} /> DD Chatbot & Evidence QA
+            <MessageSquare size={16} /> Diligence AI Advisory
           </button>
           <button
             className={`nav-tab-btn ${activeTab === "report" ? "active" : ""}`}
             onClick={() => setActiveTab("report")}
           >
-            <FileText size={16} /> Final DD Report & Export
+            <FileText size={16} /> Investment Committee Memo
           </button>
         </nav>
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === "overview" && (
           <div>
+            {/* Executive KPI Summary */}
+            <div className="grid-stats" style={{ marginBottom: "24px" }}>
+              <div className="stat-card">
+                <div className="stat-header">
+                  <span className="stat-label">Virtual Data Room (VDR)</span>
+                  <div className="stat-icon"><FileText size={18} /></div>
+                </div>
+                <div className="stat-val">{documents.length}</div>
+                <div className="stat-desc">Confidential files cataloged & indexed</div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-header">
+                  <span className="stat-label">Verified Evidence Passages</span>
+                  <div className="stat-icon" style={{ color: "#06b6d4" }}><Database size={18} /></div>
+                </div>
+                <div className="stat-val">{totalChunks}</div>
+                <div className="stat-desc">Audited cross-document citations</div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-header">
+                  <span className="stat-label">Structured Financial Schedules</span>
+                  <div className="stat-icon" style={{ color: "#10b981" }}><TableIcon size={18} /></div>
+                </div>
+                <div className="stat-val">{totalTables}</div>
+                <div className="stat-desc">Extracted statements & ledgers</div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-header">
+                  <span className="stat-label">Material Risk Flags</span>
+                  <div className="stat-icon" style={{ color: "#f59e0b" }}><ShieldAlert size={18} /></div>
+                </div>
+                <div className="stat-val">{findings.length}</div>
+                <div className="stat-desc">{pendingReviewCount > 0 ? `${pendingReviewCount} require executive sign-off` : "All findings reviewed"}</div>
+              </div>
+            </div>
+
+            {/* Deal Diligence Lifecycle Pipeline */}
+            <div className="glass-card" style={{ marginBottom: "24px", border: "1px solid rgba(99, 102, 241, 0.25)", background: "var(--card-hero-grad)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ background: "rgba(99, 102, 241, 0.2)", padding: "5px", borderRadius: "6px", color: "#818cf8" }}>
+                      <Activity size={16} />
+                    </div>
+                    <h2 style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-main)" }}>
+                      Deal Diligence Lifecycle & Stage Pipeline
+                    </h2>
+                  </div>
+                  <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "3px" }}>
+                    Active diligence progression: Ingest data room exhibits, execute multi-agent investigations, reconcile cross-domain claims, and export investment memo.
+                  </p>
+                </div>
+                <span className="badge badge-financial" style={{ fontSize: "11px" }}>
+                  Live Deal Workflow
+                </span>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                {/* Stage 1 */}
+                <div
+                  onClick={() => setActiveTab("documents")}
+                  style={{ background: "var(--bg-item)", padding: "14px", borderRadius: "10px", border: "1px solid var(--border-subtle)", cursor: "pointer", transition: "all 0.2s ease" }}
+                  className="stat-card"
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: "700", color: "#818cf8", textTransform: "uppercase" }}>Stage 1: VDR Ingestion</span>
+                    <span className={`badge ${documents.length > 0 ? "badge-verified" : "badge-medium"}`} style={{ fontSize: "9.5px", padding: "2px 6px" }}>
+                      {documents.length > 0 ? "Indexed" : "Pending"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-main)" }}>
+                    {documents.length} Files Cataloged
+                  </div>
+                  <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px" }}>
+                    OCR parsing, tabular extraction & classification
+                  </p>
+                  <div style={{ marginTop: "8px", fontSize: "11px", color: "#818cf8", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Open Data Room <ArrowRight size={11} />
+                  </div>
+                </div>
+
+                {/* Stage 2 */}
+                <div
+                  onClick={() => setActiveTab("agents")}
+                  style={{ background: "var(--bg-item)", padding: "14px", borderRadius: "10px", border: "1px solid var(--border-subtle)", cursor: "pointer", transition: "all 0.2s ease" }}
+                  className="stat-card"
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--emerald-text)", textTransform: "uppercase" }}>Stage 2: Multi-Agent Audit</span>
+                    <span className={`badge ${orchestratorRunning ? "badge-high" : projectTasks.some(t => t.status === "DONE") ? "badge-verified" : "badge-medium"}`} style={{ fontSize: "9.5px", padding: "2px 6px" }}>
+                      {orchestratorRunning ? "Auditing" : projectTasks.some(t => t.status === "DONE") ? "Active" : "Ready"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-main)" }}>
+                    Financial & Legal Audits
+                  </div>
+                  <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px" }}>
+                    EBITDA reconciliation, debt covenants & legal liabilities
+                  </p>
+                  <div style={{ marginTop: "8px", fontSize: "11px", color: "var(--emerald-text)", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Audit Workstreams <ArrowRight size={11} />
+                  </div>
+                </div>
+
+                {/* Stage 3 */}
+                <div
+                  onClick={() => setActiveTab("findings")}
+                  style={{ background: "var(--bg-item)", padding: "14px", borderRadius: "10px", border: "1px solid var(--border-subtle)", cursor: "pointer", transition: "all 0.2s ease" }}
+                  className="stat-card"
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: "700", color: "#38bdf8", textTransform: "uppercase" }}>Stage 3: Reconciliation</span>
+                    <span className={`badge ${orchestratorResult?.stages?.cross_domain?.status === "SUCCESS" ? "badge-verified" : "badge-medium"}`} style={{ fontSize: "9.5px", padding: "2px 6px" }}>
+                      {orchestratorResult?.stages?.cross_domain?.status === "SUCCESS" ? "Reconciled" : "Automated"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-main)" }}>
+                    Cross-Domain Synthesis
+                  </div>
+                  <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px" }}>
+                    Validates financial disclosures against contract covenants
+                  </p>
+                  <div style={{ marginTop: "8px", fontSize: "11px", color: "#38bdf8", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Inspect Discrepancies <ArrowRight size={11} />
+                  </div>
+                </div>
+
+                {/* Stage 4 */}
+                <div
+                  onClick={() => setActiveTab("findings")}
+                  style={{ background: "var(--bg-item)", padding: "14px", borderRadius: "10px", border: "1px solid var(--border-subtle)", cursor: "pointer", transition: "all 0.2s ease" }}
+                  className="stat-card"
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" }}>Stage 4: Risk Review</span>
+                    <span className={`badge ${pendingReviewCount > 0 ? "badge-medium" : "badge-verified"}`} style={{ fontSize: "9.5px", padding: "2px 6px" }}>
+                      {pendingReviewCount > 0 ? `${pendingReviewCount} Pending` : "Reviewed"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-main)" }}>
+                    Executive Sign-Off
+                  </div>
+                  <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px" }}>
+                    Human-in-the-loop validation of flagged deal risks
+                  </p>
+                  <div style={{ marginTop: "8px", fontSize: "11px", color: "#f59e0b", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Review Risk Matrix <ArrowRight size={11} />
+                  </div>
+                </div>
+
+                {/* Stage 5 */}
+                <div
+                  onClick={() => setActiveTab("report")}
+                  style={{ background: "var(--bg-item)", padding: "14px", borderRadius: "10px", border: "1px solid var(--border-subtle)", cursor: "pointer", transition: "all 0.2s ease" }}
+                  className="stat-card"
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: "700", color: "#ec4899", textTransform: "uppercase" }}>Stage 5: IC Memo</span>
+                    <span className={`badge ${findings.length > 0 ? "badge-verified" : "badge-medium"}`} style={{ fontSize: "9.5px", padding: "2px 6px" }}>
+                      {findings.length > 0 ? "Ready" : "Draft"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-main)" }}>
+                    Investment Memo
+                  </div>
+                  <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px" }}>
+                    Synthesized deal memo, risk heatmap & exportable report
+                  </p>
+                  <div style={{ marginTop: "8px", fontSize: "11px", color: "#ec4899", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                    Export Report <ArrowRight size={11} />
+                  </div>
+                </div>
+              </div>
+            </div>
             {/* Target Profile & Investigation Scope Card */}
             <div className="glass-card" style={{ marginBottom: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "16px" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
-                    <div style={{ background: "rgba(16, 185, 129, 0.2)", padding: "6px", borderRadius: "8px", color: "#34d399" }}>
+                    <div style={{ background: "rgba(16, 185, 129, 0.2)", padding: "6px", borderRadius: "8px", color: "var(--emerald-text)" }}>
                       <Building2 size={18} />
                     </div>
-                    <h2 style={{ fontSize: "18px", fontWeight: "700", color: "#f8fafc" }}>
+                    <h2 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)" }}>
                       {currentProject?.target_company ? `${currentProject.target_company} — Target Profile & Scope` : "Target Profile & Scope"}
                     </h2>
                   </div>
-                  <p style={{ fontSize: "13px", color: "#94a3b8", maxWidth: "700px" }}>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", maxWidth: "700px" }}>
                     {currentProject?.description || "Due diligence investigation parameters, workstream configuration, and key investigative questions."}
                   </p>
                 </div>
@@ -1092,26 +1301,26 @@ export default function DueDiligenceApp() {
 
               {/* Company Info Grid */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "18px" }}>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase" }}>Target Company</div>
-                  <div style={{ fontSize: "15px", fontWeight: "700", color: "#f8fafc", marginTop: "4px" }}>
+                <div style={{ background: "var(--bg-item)", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>Target Company</div>
+                  <div style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-main)", marginTop: "4px" }}>
                     {currentProject?.target_company || "Not Configured"}
                   </div>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase" }}>Deal Type</div>
+                <div style={{ background: "var(--bg-item)", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>Deal Type</div>
                   <div style={{ fontSize: "15px", fontWeight: "700", color: "#818cf8", marginTop: "4px" }}>
                     {currentProject?.deal_type || "Acquisition"}
                   </div>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase" }}>Industry Sector</div>
+                <div style={{ background: "var(--bg-item)", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>Industry Sector</div>
                   <div style={{ fontSize: "15px", fontWeight: "700", color: "#38bdf8", marginTop: "4px" }}>
                     {currentProject?.industry || "Technology"}
                   </div>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase" }}>Diligence Period</div>
+                <div style={{ background: "var(--bg-item)", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>Diligence Period</div>
                   <div style={{ fontSize: "15px", fontWeight: "700", color: "#fbbf24", marginTop: "4px" }}>
                     {currentProject?.diligence_period || "Q1 2026"}
                   </div>
@@ -1121,7 +1330,7 @@ export default function DueDiligenceApp() {
               {/* Workstreams & Scope Review Areas */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
                 {/* Financial Workstream Box */}
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "14px 16px", borderRadius: "10px", border: "1px solid rgba(52, 211, 153, 0.2)" }}>
+                <div style={{ background: "var(--bg-item)", padding: "14px 16px", borderRadius: "10px", border: "1px solid rgba(52, 211, 153, 0.2)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span className="badge badge-financial" style={{ fontSize: "11px" }}>Financial DD</span>
@@ -1137,10 +1346,10 @@ export default function DueDiligenceApp() {
                       Configure Scope
                     </button>
                   </div>
-                  <div style={{ fontSize: "12px", color: "#cbd5e1", marginBottom: "6px" }}>
+                  <div style={{ fontSize: "12px", color: "var(--text-sub)", marginBottom: "6px" }}>
                     <strong>Key Questions ({projectScopes?.financial?.key_questions?.length || 0}):</strong>
                   </div>
-                  <ul style={{ fontSize: "11.5px", color: "#94a3b8", paddingLeft: "16px", margin: 0, maxHeight: "85px", overflowY: "auto" }}>
+                  <ul style={{ fontSize: "11.5px", color: "var(--text-muted)", paddingLeft: "16px", margin: 0, maxHeight: "85px", overflowY: "auto" }}>
                     {(projectScopes?.financial?.key_questions && projectScopes.financial.key_questions.length > 0) ? (
                       projectScopes.financial.key_questions.map((q, idx) => <li key={idx} style={{ marginBottom: "2px" }}>{q}</li>)
                     ) : (
@@ -1150,7 +1359,7 @@ export default function DueDiligenceApp() {
                 </div>
 
                 {/* Legal Workstream Box */}
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "14px 16px", borderRadius: "10px", border: "1px solid rgba(56, 189, 248, 0.2)" }}>
+                <div style={{ background: "var(--bg-item)", padding: "14px 16px", borderRadius: "10px", border: "1px solid rgba(56, 189, 248, 0.2)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span className="badge badge-legal" style={{ fontSize: "11px" }}>Legal DD</span>
@@ -1166,10 +1375,10 @@ export default function DueDiligenceApp() {
                       Configure Scope
                     </button>
                   </div>
-                  <div style={{ fontSize: "12px", color: "#cbd5e1", marginBottom: "6px" }}>
+                  <div style={{ fontSize: "12px", color: "var(--text-sub)", marginBottom: "6px" }}>
                     <strong>Key Questions ({projectScopes?.legal?.key_questions?.length || 0}):</strong>
                   </div>
-                  <ul style={{ fontSize: "11.5px", color: "#94a3b8", paddingLeft: "16px", margin: 0, maxHeight: "85px", overflowY: "auto" }}>
+                  <ul style={{ fontSize: "11.5px", color: "var(--text-muted)", paddingLeft: "16px", margin: 0, maxHeight: "85px", overflowY: "auto" }}>
                     {(projectScopes?.legal?.key_questions && projectScopes.legal.key_questions.length > 0) ? (
                       projectScopes.legal.key_questions.map((q, idx) => <li key={idx} style={{ marginBottom: "2px" }}>{q}</li>)
                     ) : (
@@ -1181,18 +1390,18 @@ export default function DueDiligenceApp() {
             </div>
 
             {/* Central Orchestrator Action Card */}
-            <div className="glass-card" style={{ marginBottom: "28px", border: "1px solid rgba(99, 102, 241, 0.3)", background: "linear-gradient(180deg, rgba(16, 23, 38, 0.9) 0%, rgba(10, 14, 26, 0.8) 100%)" }}>
+            <div className="glass-card" style={{ marginBottom: "28px", border: "1px solid rgba(99, 102, 241, 0.3)", background: "var(--card-hero-grad)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "16px" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
                     <div style={{ background: "rgba(99, 102, 241, 0.2)", padding: "6px", borderRadius: "8px", color: "#818cf8" }}>
                       <Play size={18} />
                     </div>
-                    <h2 style={{ fontSize: "18px", fontWeight: "700", color: "#f8fafc" }}>
+                    <h2 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)" }}>
                       Central Due Diligence Orchestrator
                     </h2>
                   </div>
-                  <p style={{ fontSize: "13px", color: "#94a3b8", maxWidth: "680px" }}>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", maxWidth: "680px" }}>
                     Autonomous investigation pipeline: <strong>Planner</strong> → <strong>Financial Agent</strong> + <strong>Legal Agent</strong> → <strong>Cross-Domain Agent</strong> → <strong>Evidence Validation</strong>.
                   </p>
                 </div>
@@ -1232,12 +1441,12 @@ export default function DueDiligenceApp() {
               {/* Running Status Banner */}
               {orchestratorRunning && (
                 <div style={{ marginTop: "16px", padding: "14px 18px", borderRadius: "10px", background: "rgba(99, 102, 241, 0.12)", border: "1px solid rgba(99, 102, 241, 0.3)", display: "flex", alignItems: "center", gap: "12px" }}>
-                  <RefreshCw className="animate-spin" size={20} color="#818cf8" />
+                  <RefreshCw className="animate-spin" size={20} color="var(--primary)" />
                   <div>
                     <div style={{ fontSize: "14px", fontWeight: "700", color: "#c7d2fe" }}>
                       Investigation Workflow in Progress
                     </div>
-                    <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "2px" }}>
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
                       Executing Planner → Financial Agent → Legal Agent → Cross-Domain Agent → Evidence Validation...
                     </div>
                   </div>
@@ -1254,10 +1463,10 @@ export default function DueDiligenceApp() {
 
               {/* Orchestrator Result Details */}
               {orchestratorResult && !orchestratorRunning && (
-                <div style={{ marginTop: "20px", paddingTop: "18px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ marginTop: "20px", paddingTop: "18px", borderTop: "1px solid var(--border-subtle)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <span style={{ fontSize: "13px", fontWeight: "600", color: "#94a3b8" }}>OVERALL STATUS:</span>
+                      <span style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-muted)" }}>OVERALL STATUS:</span>
                       <span
                         className={`badge ${
                           orchestratorResult.overall_status === "COMPLETED"
@@ -1287,27 +1496,27 @@ export default function DueDiligenceApp() {
                   {orchestratorResult.stages && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "12px" }}>
                       {/* 1. Planner */}
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div style={{ background: "var(--bg-item)", padding: "12px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                           <span style={{ fontSize: "12px", fontWeight: "700", color: "#818cf8" }}>1. PLANNER</span>
                           <span className={`badge ${orchestratorResult.stages.planner?.status === "SUCCESS" ? "badge-verified" : "badge-medium"}`} style={{ fontSize: "10px" }}>
                             {orchestratorResult.stages.planner?.status || "PENDING"}
                           </span>
                         </div>
-                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                           {orchestratorResult.stages.planner?.plan_summary || "Investigation plan formulated."}
                         </p>
                       </div>
 
                       {/* 2. Financial */}
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div style={{ background: "var(--bg-item)", padding: "12px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                          <span style={{ fontSize: "12px", fontWeight: "700", color: "#34d399" }}>2. FINANCIAL AGENT</span>
+                          <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--emerald-text)" }}>2. FINANCIAL AGENT</span>
                           <span className={`badge ${orchestratorResult.stages.financial?.status === "SUCCESS" ? "badge-verified" : orchestratorResult.stages.financial?.status === "SKIPPED" ? "" : "badge-high"}`} style={{ fontSize: "10px" }}>
                             {orchestratorResult.stages.financial?.status || "PENDING"}
                           </span>
                         </div>
-                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                           {orchestratorResult.stages.financial?.status === "SKIPPED"
                             ? orchestratorResult.stages.financial.reason
                             : `Tools called: ${orchestratorResult.stages.financial?.tool_calls || 0} (${orchestratorResult.stages.financial?.iterations || 0} steps)`}
@@ -1315,14 +1524,14 @@ export default function DueDiligenceApp() {
                       </div>
 
                       {/* 3. Legal */}
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div style={{ background: "var(--bg-item)", padding: "12px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                           <span style={{ fontSize: "12px", fontWeight: "700", color: "#38bdf8" }}>3. LEGAL AGENT</span>
                           <span className={`badge ${orchestratorResult.stages.legal?.status === "SUCCESS" ? "badge-verified" : orchestratorResult.stages.legal?.status === "SKIPPED" ? "" : "badge-high"}`} style={{ fontSize: "10px" }}>
                             {orchestratorResult.stages.legal?.status || "PENDING"}
                           </span>
                         </div>
-                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                           {orchestratorResult.stages.legal?.status === "SKIPPED"
                             ? orchestratorResult.stages.legal.reason
                             : `Tools called: ${orchestratorResult.stages.legal?.tool_calls || 0} (${orchestratorResult.stages.legal?.iterations || 0} steps)`}
@@ -1330,14 +1539,14 @@ export default function DueDiligenceApp() {
                       </div>
 
                       {/* 4. Cross-Domain */}
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div style={{ background: "var(--bg-item)", padding: "12px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                           <span style={{ fontSize: "12px", fontWeight: "700", color: "#f472b6" }}>4. CROSS-DOMAIN</span>
                           <span className={`badge ${orchestratorResult.stages.cross_domain?.status === "SUCCESS" ? "badge-verified" : orchestratorResult.stages.cross_domain?.status === "SKIPPED" ? "" : "badge-high"}`} style={{ fontSize: "10px" }}>
                             {orchestratorResult.stages.cross_domain?.status || "PENDING"}
                           </span>
                         </div>
-                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                           {orchestratorResult.stages.cross_domain?.status === "SKIPPED"
                             ? orchestratorResult.stages.cross_domain.reason
                             : `Tools called: ${orchestratorResult.stages.cross_domain?.tool_calls || 0} (${orchestratorResult.stages.cross_domain?.iterations || 0} steps)`}
@@ -1345,14 +1554,14 @@ export default function DueDiligenceApp() {
                       </div>
 
                       {/* 5. Evidence Validation */}
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div style={{ background: "var(--bg-item)", padding: "12px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                           <span style={{ fontSize: "12px", fontWeight: "700", color: "#fbbf24" }}>5. EVIDENCE VALIDATION</span>
                           <span className={`badge ${orchestratorResult.stages.evidence_validation?.status === "SUCCESS" ? "badge-verified" : "badge-high"}`} style={{ fontSize: "10px" }}>
                             {orchestratorResult.stages.evidence_validation?.status || "PENDING"}
                           </span>
                         </div>
-                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                           Verified: <strong>{orchestratorResult.stages.evidence_validation?.verified_count || 0}</strong> / Total: {orchestratorResult.stages.evidence_validation?.total_evidence || 0}
                           {orchestratorResult.stages.evidence_validation?.discrepancy_count > 0 && ` • Discrepancies: ${orchestratorResult.stages.evidence_validation.discrepancy_count}`}
                           {orchestratorResult.stages.evidence_validation?.duplicates_cleaned > 0 && ` • Cleaned ${orchestratorResult.stages.evidence_validation.duplicates_cleaned} dups`}
@@ -1384,15 +1593,15 @@ export default function DueDiligenceApp() {
                     <div style={{ background: "rgba(99, 102, 241, 0.2)", padding: "6px", borderRadius: "8px", color: "#818cf8" }}>
                       <ListTodo size={18} />
                     </div>
-                    <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#f8fafc" }}>
-                      Investigation Plan & Real DD Tasks
+                    <h3 style={{ fontSize: "17px", fontWeight: "700", color: "var(--text-main)" }}>
+                      Diligence Workstream Action Plan & Milestones
                     </h3>
                     <span className="badge badge-verified" style={{ fontSize: "11px" }}>
                       {projectTasks.filter(t => t.status === "DONE").length} / {projectTasks.length} Completed
                     </span>
                   </div>
-                  <p style={{ fontSize: "12.5px", color: "#94a3b8" }}>
-                    Real task entities persisted in PostgreSQL (<code>DDTask</code>). Workstream tasks automatically progress during pipeline execution.
+                  <p style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
+                    Active workstream action items and audit milestones. Tasks automatically advance as specialized agents collect and cross-reference deal evidence.
                   </p>
                 </div>
 
@@ -1416,10 +1625,10 @@ export default function DueDiligenceApp() {
               </div>
 
               {projectTasks.length === 0 ? (
-                <div style={{ padding: "28px", textAlign: "center", background: "rgba(255,255,255,0.01)", borderRadius: "10px", border: "1px dashed rgba(255,255,255,0.1)" }}>
+                <div style={{ padding: "28px", textAlign: "center", background: "var(--bg-item)", borderRadius: "10px", border: "1px dashed var(--border-subtle)" }}>
                   <ListTodo size={32} color="#64748b" style={{ margin: "0 auto 10px auto" }} />
                   <div style={{ fontSize: "14px", fontWeight: "600", color: "#e2e8f0" }}>No Investigation Tasks Generated Yet</div>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", maxWidth: "460px", margin: "6px auto 14px auto" }}>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)", maxWidth: "460px", margin: "6px auto 14px auto" }}>
                     Click &ldquo;Generate Plan Tasks&rdquo; to build structured diligence tasks for the enabled Financial and Legal workstreams based on the project scope.
                   </p>
                   <button
@@ -1451,13 +1660,13 @@ export default function DueDiligenceApp() {
                             </span>
                           </td>
                           <td>
-                            <div style={{ fontWeight: "600", color: "#f8fafc", fontSize: "13px" }}>{t.title}</div>
+                            <div style={{ fontWeight: "600", color: "var(--text-main)", fontSize: "13px" }}>{t.title}</div>
                             {t.description && (
-                              <div style={{ fontSize: "11.5px", color: "#94a3b8", marginTop: "2px" }}>{t.description}</div>
+                              <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>{t.description}</div>
                             )}
                           </td>
                           <td>
-                            <span style={{ fontSize: "11.5px", color: "#a5b4fc", fontFamily: "var(--font-mono)" }}>
+                            <span style={{ fontSize: "11.5px", color: "var(--primary)", fontFamily: "var(--font-mono)" }}>
                               {t.assigned_agent || "unassigned"}
                             </span>
                           </td>
@@ -1476,10 +1685,10 @@ export default function DueDiligenceApp() {
                               value={t.status}
                               onChange={(e) => handleUpdateTaskStatus(t.id, e.target.value)}
                               style={{
-                                background: t.status === "DONE" ? "rgba(16, 185, 129, 0.15)" : t.status === "IN_PROGRESS" ? "rgba(99, 102, 241, 0.15)" : t.status === "BLOCKED" ? "rgba(239, 68, 68, 0.15)" : "#0f172a",
-                                border: `1px solid ${t.status === "DONE" ? "rgba(16, 185, 129, 0.3)" : t.status === "IN_PROGRESS" ? "rgba(99, 102, 241, 0.3)" : t.status === "BLOCKED" ? "rgba(239, 68, 68, 0.3)" : "rgba(255,255,255,0.1)"}`,
+                                background: t.status === "DONE" ? "var(--emerald-bg)" : t.status === "IN_PROGRESS" ? "rgba(99, 102, 241, 0.12)" : t.status === "BLOCKED" ? "var(--rose-bg)" : "var(--bg-input)",
+                                border: `1px solid ${t.status === "DONE" ? "rgba(16, 185, 129, 0.3)" : t.status === "IN_PROGRESS" ? "rgba(99, 102, 241, 0.3)" : t.status === "BLOCKED" ? "rgba(239, 68, 68, 0.3)" : "var(--border-subtle)"}`,
                                 borderRadius: "6px",
-                                color: t.status === "DONE" ? "#34d399" : t.status === "IN_PROGRESS" ? "#818cf8" : t.status === "BLOCKED" ? "#f87171" : "#cbd5e1",
+                                color: t.status === "DONE" ? "var(--emerald-text)" : t.status === "IN_PROGRESS" ? "var(--primary)" : t.status === "BLOCKED" ? "var(--rose-text)" : "var(--text-sub)",
                                 fontSize: "11px",
                                 fontWeight: "700",
                                 padding: "3px 6px",
@@ -1487,10 +1696,10 @@ export default function DueDiligenceApp() {
                                 cursor: "pointer"
                               }}
                             >
-                              <option value="TODO" style={{ background: "#0f172a", color: "#cbd5e1" }}>TODO</option>
-                              <option value="IN_PROGRESS" style={{ background: "#0f172a", color: "#818cf8" }}>IN_PROGRESS</option>
-                              <option value="DONE" style={{ background: "#0f172a", color: "#34d399" }}>DONE</option>
-                              <option value="BLOCKED" style={{ background: "#0f172a", color: "#f87171" }}>BLOCKED</option>
+                              <option value="TODO" style={{ background: "var(--bg-input)", color: "var(--text-sub)" }}>TODO</option>
+                              <option value="IN_PROGRESS" style={{ background: "var(--bg-input)", color: "#818cf8" }}>IN_PROGRESS</option>
+                              <option value="DONE" style={{ background: "var(--bg-input)", color: "var(--emerald-text)" }}>DONE</option>
+                              <option value="BLOCKED" style={{ background: "var(--bg-input)", color: "#f87171" }}>BLOCKED</option>
                             </select>
                           </td>
                         </tr>
@@ -1499,79 +1708,6 @@ export default function DueDiligenceApp() {
                   </table>
                 </div>
               )}
-            </div>
-
-            <div className="grid-stats">
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <span className="stat-label">Ingested Documents</span>
-                  <div className="stat-icon"><FileText size={18} /></div>
-                </div>
-                <div className="stat-val">{documents.length}</div>
-                <div className="stat-desc">Processed via Docling & RapidOCR</div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <span className="stat-label">Vector Chunks in DB</span>
-                  <div className="stat-icon" style={{ color: "#06b6d4" }}><Database size={18} /></div>
-                </div>
-                <div className="stat-val">{totalChunks}</div>
-                <div className="stat-desc">1024-d BGE-M3 Dense Embeddings</div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <span className="stat-label">Extracted Tables</span>
-                  <div className="stat-icon" style={{ color: "#10b981" }}><TableIcon size={18} /></div>
-                </div>
-                <div className="stat-val">{totalTables}</div>
-                <div className="stat-desc">Structured Markdown Tables</div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-header">
-                  <span className="stat-label">Persisted Findings</span>
-                  <div className="stat-icon" style={{ color: "#f59e0b" }}><ShieldAlert size={18} /></div>
-                </div>
-                <div className="stat-val">{findings.length}</div>
-                <div className="stat-desc">{pendingReviewCount} require human review</div>
-              </div>
-            </div>
-
-            {/* Architecture Pipeline Banner */}
-            <div className="glass-card" style={{ marginBottom: "32px" }}>
-              <h2 style={{ fontSize: "17px", fontWeight: "700", marginBottom: "16px", color: "#f8fafc" }}>
-                End-to-End Live Workflow Architecture
-              </h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ color: "#6366f1", fontWeight: "700", fontSize: "12px", marginBottom: "6px" }}>STEP 1: INGESTION</div>
-                  <div style={{ fontSize: "14px", fontWeight: "600", color: "#f1f5f9" }}>Docling + RapidOCR</div>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>Extracts text, table hierarchies, and metadata without data loss.</p>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ color: "#06b6d4", fontWeight: "700", fontSize: "12px", marginBottom: "6px" }}>STEP 2: CLASSIFICATION</div>
-                  <div style={{ fontSize: "14px", fontWeight: "600", color: "#f1f5f9" }}>Qwen3 Zero-Shot</div>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>Classifies files into Financial, Legal, or Other categories with confidence.</p>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ color: "#10b981", fontWeight: "700", fontSize: "12px", marginBottom: "6px" }}>STEP 3: KNOWLEDGE BASE</div>
-                  <div style={{ fontSize: "14px", fontWeight: "600", color: "#f1f5f9" }}>pgvector + BGE-M3</div>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>Stores 1024-d dense vectors with cosine similarity index.</p>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ color: "#f59e0b", fontWeight: "700", fontSize: "12px", marginBottom: "6px" }}>STEP 4: AGENTS</div>
-                  <div style={{ fontSize: "14px", fontWeight: "600", color: "#f1f5f9" }}>Qwen3 Autonomous DD</div>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>Executes real tools, reconciles values, and records findings.</p>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div style={{ color: "#ec4899", fontWeight: "700", fontSize: "12px", marginBottom: "6px" }}>STEP 5: REVIEW</div>
-                  <div style={{ fontSize: "14px", fontWeight: "600", color: "#f1f5f9" }}>Human-in-the-Loop</div>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>Approve, reject, or request evidence; triggers reanalysis runs.</p>
-                </div>
-              </div>
             </div>
 
             {/* Recent Findings Preview */}
@@ -1588,15 +1724,15 @@ export default function DueDiligenceApp() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   {findings.slice(0, 3).map((f) => (
-                    <div key={f.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "12px", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div key={f.id} style={{ background: "var(--bg-item)", border: "1px solid var(--border-subtle)", borderRadius: "12px", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "6px" }}>
                           <span className={`badge badge-${f.risk_severity}`}>{f.risk_severity} risk</span>
                           <span className={`badge badge-${f.workstream}`}>{f.workstream}</span>
-                          <span style={{ fontSize: "12px", color: "#94a3b8" }}>Status: <strong>{f.status}</strong></span>
+                          <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Status: <strong>{f.status}</strong></span>
                         </div>
-                        <h4 style={{ fontSize: "15px", fontWeight: "600", color: "#f8fafc" }}>{f.title}</h4>
-                        <p style={{ fontSize: "13px", color: "#94a3b8", marginTop: "4px" }}>{f.evidence_conclusion}</p>
+                        <h4 style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-main)" }}>{f.title}</h4>
+                        <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px" }}>{f.evidence_conclusion}</p>
                       </div>
                       <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab("findings")}>
                         Inspect
@@ -1642,7 +1778,7 @@ export default function DueDiligenceApp() {
             <div className="glass-card">
               <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "16px" }}>Ingested Documents Library</h3>
               {loadingDocs ? (
-                <p style={{ color: "#94a3b8", padding: "20px 0" }}>Loading documents...</p>
+                <p style={{ color: "var(--text-muted)", padding: "20px 0" }}>Loading documents...</p>
               ) : documents.length === 0 ? (
                 <p style={{ color: "#64748b", padding: "20px 0" }}>No documents found in project {projectId}. Upload a PDF above to begin.</p>
               ) : (
@@ -1662,7 +1798,7 @@ export default function DueDiligenceApp() {
                     <tbody>
                       {documents.map((d) => (
                         <tr key={d.id}>
-                          <td style={{ fontWeight: "600", color: "#f8fafc" }}>{d.file_name}</td>
+                          <td style={{ fontWeight: "600", color: "var(--text-main)" }}>{d.file_name}</td>
                           <td>
                             <span className={`badge badge-${d.category}`}>
                               {d.category}
@@ -1673,7 +1809,7 @@ export default function DueDiligenceApp() {
                             <span style={{ fontFamily: "var(--font-mono)", color: "#38bdf8" }}>{d.chunk_count}</span>
                           </td>
                           <td>
-                            <span style={{ fontFamily: "var(--font-mono)", color: "#34d399" }}>{d.table_count}</span>
+                            <span style={{ fontFamily: "var(--font-mono)", color: "var(--emerald-text)" }}>{d.table_count}</span>
                           </td>
                           <td>{d.created_at ? new Date(d.created_at).toLocaleDateString() : "Just now"}</td>
                           <td>
@@ -1698,17 +1834,17 @@ export default function DueDiligenceApp() {
               <div className="modal-overlay" onClick={() => setSelectedDocTables(null)}>
                 <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "800px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3 style={{ fontSize: "17px", fontWeight: "700" }}>Docling Extracted Markdown Tables</h3>
+                    <h3 style={{ fontSize: "17px", fontWeight: "700" }}>Extracted Financial & Operational Schedules</h3>
                     <button className="btn btn-secondary btn-sm" onClick={() => setSelectedDocTables(null)}>Close</button>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxHeight: "60vh", overflowY: "auto" }}>
                     {selectedDocTables.map((t, idx) => (
-                      <div key={t.id || idx} style={{ background: "rgba(0,0,0,0.4)", padding: "16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <div style={{ display: "flex", gap: "10px", marginBottom: "8px", fontSize: "12px", color: "#94a3b8" }}>
+                      <div key={t.id || idx} style={{ background: "rgba(0,0,0,0.4)", padding: "16px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
+                        <div style={{ display: "flex", gap: "10px", marginBottom: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
                           <span>Page: <strong>{t.page_number}</strong></span>
                           <span>Section: <strong>{t.section || 'General'}</strong></span>
                         </div>
-                        <pre className="code-box" style={{ background: "#0b0f19" }}>{t.content}</pre>
+                        <pre className="code-box" style={{ background: "var(--bg-surface)" }}>{t.content}</pre>
                       </div>
                     ))}
                   </div>
@@ -1723,10 +1859,10 @@ export default function DueDiligenceApp() {
           <div>
             <div className="glass-card" style={{ marginBottom: "24px" }}>
               <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "12px" }}>
-                pgvector Semantic Search Explorer
+                Diligence Evidence & Semantic Clause Explorer
               </h3>
-              <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "18px" }}>
-                Execute live vector similarity queries against 1024-dimensional BGE-M3 embeddings in PostgreSQL.
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "18px" }}>
+                Search verified clauses, disclosure schedules, and cross-document exhibits across the Virtual Data Room.
               </p>
 
               <form onSubmit={handleSearch} style={{ display: "flex", gap: "12px" }}>
@@ -1752,32 +1888,32 @@ export default function DueDiligenceApp() {
                   Search Results ({searchResults.length})
                 </h4>
                 {searchResults.length > 0 && (
-                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>Ranked by Cosine Similarity</span>
+                  <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Ranked by Cosine Similarity</span>
                 )}
               </div>
 
               {searching ? (
-                <p style={{ color: "#94a3b8", padding: "20px 0" }}>Searching pgvector...</p>
+                <p style={{ color: "var(--text-muted)", padding: "20px 0" }}>Searching diligence evidence repository...</p>
               ) : searchResults.length === 0 ? (
                 <p style={{ color: "#64748b", padding: "20px 0" }}>Run a query above to inspect retrieved document chunks and tables.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {searchResults.map((r, i) => (
-                    <div key={r.chunk_id || i} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "18px" }}>
+                    <div key={r.chunk_id || i} style={{ background: "var(--bg-item)", border: "1px solid var(--border-subtle)", borderRadius: "12px", padding: "18px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                           <span style={{ fontWeight: "700", color: "#6366f1", fontSize: "13px" }}>#{i + 1}</span>
-                          <span style={{ fontWeight: "600", color: "#f8fafc", fontSize: "14px" }}>{r.document_name}</span>
+                          <span style={{ fontWeight: "600", color: "var(--text-main)", fontSize: "14px" }}>{r.document_name}</span>
                           <span className="badge badge-verified">Page {r.page_number}</span>
-                          {r.section && <span style={{ fontSize: "12px", color: "#94a3b8" }}>[{r.section}]</span>}
+                          {r.section && <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>[{r.section}]</span>}
                         </div>
                         {r.similarity_score !== undefined && (
-                          <span style={{ fontSize: "12px", color: "#34d399", fontFamily: "var(--font-mono)" }}>
+                          <span style={{ fontSize: "12px", color: "var(--emerald-text)", fontFamily: "var(--font-mono)" }}>
                             Score: {(r.similarity_score * 100).toFixed(1)}%
                           </span>
                         )}
                       </div>
-                      <div className="code-box" style={{ background: "#080c14" }}>
+                      <div className="code-box" style={{ background: "var(--bg-surface)" }}>
                         {r.content}
                       </div>
                     </div>
@@ -1792,14 +1928,14 @@ export default function DueDiligenceApp() {
         {activeTab === "agents" && (
           <div>
             <div className="glass-card" style={{ marginBottom: "24px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "14px" }}>Autonomous Agent Investigation Lab</h3>
-              <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "20px" }}>
-                Execute real Qwen3 investigation agents with live tool calling against PostgreSQL knowledge base.
+              <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "14px" }}>Autonomous Workstream Audit Lab</h3>
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "20px" }}>
+                Deploy autonomous specialized audit agents (Financial, Legal, Cross-Domain) with real evidence tool calling and verification.
               </p>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px", marginBottom: "18px" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "#94a3b8", marginBottom: "8px" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "var(--text-muted)", marginBottom: "8px" }}>
                     Select Agent Workstream
                   </label>
                   <select
@@ -1814,7 +1950,7 @@ export default function DueDiligenceApp() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "#94a3b8", marginBottom: "8px" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "var(--text-muted)", marginBottom: "8px" }}>
                     Investigation Objective
                   </label>
                   <textarea
@@ -1844,7 +1980,7 @@ export default function DueDiligenceApp() {
                   className="btn btn-secondary"
                   disabled={runningAgent || orchestratorRunning}
                 >
-                  <Play size={16} color="#818cf8" />
+                  <Play size={16} color="var(--primary)" />
                   Run Central Full DD Pipeline
                 </button>
               </div>
@@ -1859,28 +1995,28 @@ export default function DueDiligenceApp() {
                 </h4>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "18px" }}>
-                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "8px" }}>
-                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>STATUS</div>
-                    <div style={{ fontSize: "14px", fontWeight: "700", color: "#34d399" }}>{agentResult.status}</div>
+                  <div style={{ background: "var(--bg-item)", padding: "12px", borderRadius: "8px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>STATUS</div>
+                    <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--emerald-text)" }}>{agentResult.status}</div>
                   </div>
-                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "8px" }}>
-                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>ITERATIONS</div>
+                  <div style={{ background: "var(--bg-item)", padding: "12px", borderRadius: "8px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>ITERATIONS</div>
                     <div style={{ fontSize: "14px", fontWeight: "700" }}>{agentResult.iterations}</div>
                   </div>
-                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "8px" }}>
-                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>PERSISTED FINDINGS</div>
+                  <div style={{ background: "var(--bg-item)", padding: "12px", borderRadius: "8px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>PERSISTED FINDINGS</div>
                     <div style={{ fontSize: "14px", fontWeight: "700", color: "#6366f1" }}>{agentResult.persisted_findings_count}</div>
                   </div>
                 </div>
 
                 <div style={{ marginBottom: "16px" }}>
-                  <h5 style={{ fontSize: "13px", fontWeight: "600", color: "#94a3b8", marginBottom: "8px" }}>Executed Tool Calls</h5>
+                  <h5 style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-muted)", marginBottom: "8px" }}>Executed Tool Calls</h5>
                   {agentResult.tool_calls && agentResult.tool_calls.length > 0 ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                       {agentResult.tool_calls.map((tc, idx) => (
-                        <div key={idx} style={{ background: "#0a0e18", padding: "12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div key={idx} style={{ background: "var(--bg-surface)", padding: "12px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
                           <span style={{ color: "#818cf8", fontWeight: "600", fontSize: "13px" }}>tool: {tc.name}</span>
-                          <pre style={{ color: "#94a3b8", fontSize: "12px", marginTop: "4px" }}>{JSON.stringify(tc.arguments, null, 2)}</pre>
+                          <pre style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "4px" }}>{JSON.stringify(tc.arguments, null, 2)}</pre>
                         </div>
                       ))}
                     </div>
@@ -1890,8 +2026,8 @@ export default function DueDiligenceApp() {
                 </div>
 
                 <div>
-                  <h5 style={{ fontSize: "13px", fontWeight: "600", color: "#94a3b8", marginBottom: "8px" }}>Model Response & Reasoning</h5>
-                  <div className="code-box" style={{ background: "#0a0e18", color: "#e2e8f0" }}>
+                  <h5 style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-muted)", marginBottom: "8px" }}>Model Response & Reasoning</h5>
+                  <div className="code-box" style={{ background: "var(--bg-surface)", color: "#e2e8f0" }}>
                     {agentResult.final_answer || "Investigation completed and findings persisted."}
                   </div>
                 </div>
@@ -1906,7 +2042,7 @@ export default function DueDiligenceApp() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <div>
                 <h3 style={{ fontSize: "18px", fontWeight: "700" }}>Persisted Findings & Evidence Review</h3>
-                <p style={{ fontSize: "13px", color: "#94a3b8" }}>
+                <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                   Grounded findings stored in PostgreSQL with source traceability and human review decisions.
                 </p>
               </div>
@@ -1919,11 +2055,11 @@ export default function DueDiligenceApp() {
             <div className="glass-card" style={{ marginBottom: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
                 <div>
-                  <h4 style={{ fontSize: "15px", fontWeight: "700", color: "#f8fafc", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Layers size={18} color="#818cf8" />
+                  <h4 style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Layers size={18} color="var(--primary)" />
                     Automated Reanalysis Queue & Requests ({reanalysisRuns.length})
                   </h4>
-                  <p style={{ fontSize: "12.5px", color: "#94a3b8", marginTop: "2px" }}>
+                  <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "2px" }}>
                     Track reviewer-requested clarification jobs, background worker status, and reinvestigation summaries.
                   </p>
                 </div>
@@ -1955,13 +2091,13 @@ export default function DueDiligenceApp() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {reanalysisRuns.slice(0, 5).map((run) => (
-                    <div key={run.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", padding: "12px 16px" }}>
+                    <div key={run.id} style={{ background: "var(--bg-item)", border: "1px solid var(--border-subtle)", borderRadius: "10px", padding: "12px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "8px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "#94a3b8" }}>
+                          <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
                             Run #{run.id.substring(0, 8)}
                           </span>
-                          <span style={{ fontSize: "12.5px", fontWeight: "600", color: "#f8fafc" }}>
+                          <span style={{ fontSize: "12.5px", fontWeight: "600", color: "var(--text-main)" }}>
                             Trigger: {run.trigger_type}
                           </span>
                         </div>
@@ -1970,7 +2106,7 @@ export default function DueDiligenceApp() {
                         </span>
                       </div>
                       {run.reason && (
-                        <p style={{ fontSize: "12.5px", color: "#cbd5e1", marginBottom: "6px" }}>
+                        <p style={{ fontSize: "12.5px", color: "var(--text-sub)", marginBottom: "6px" }}>
                           <strong>Clarification Request:</strong> {run.reason}
                         </p>
                       )}
@@ -1987,7 +2123,7 @@ export default function DueDiligenceApp() {
 
             {/* Workstream Filter Bar */}
             <div style={{ display: "flex", gap: "10px", marginBottom: "16px", alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase" }}>Workstream:</span>
+              <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>Workstream:</span>
               {["ALL", "financial", "legal", "cross_domain"].map(filterKey => {
                 const count = filterKey === "ALL" ? findings.length : findings.filter(f => (f.workstream || "").toLowerCase() === filterKey.toLowerCase()).length;
                 const isActive = findingFilter.toLowerCase() === filterKey.toLowerCase();
@@ -1997,9 +2133,9 @@ export default function DueDiligenceApp() {
                     key={filterKey}
                     onClick={() => setFindingFilter(filterKey)}
                     style={{
-                      background: isActive ? "#4f46e5" : "rgba(255,255,255,0.04)",
-                      color: isActive ? "#ffffff" : "#94a3b8",
-                      border: isActive ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.08)",
+                      background: isActive ? "var(--primary)" : "var(--bg-item)",
+                      color: isActive ? "#ffffff" : "var(--text-muted)",
+                      border: isActive ? "1px solid var(--primary)" : "1px solid var(--border-subtle)",
                       borderRadius: "6px",
                       padding: "5px 12px",
                       fontSize: "12px",
@@ -2014,18 +2150,18 @@ export default function DueDiligenceApp() {
             </div>
 
             {loadingFindings ? (
-              <p style={{ color: "#94a3b8" }}>Loading findings...</p>
+              <p style={{ color: "var(--text-muted)" }}>Loading findings...</p>
             ) : findings.length === 0 ? (
               <div className="glass-card" style={{ textAlign: "center", padding: "40px" }}>
                 <ShieldAlert size={36} color="#64748b" style={{ margin: "0 auto 12px" }} />
-                <h4 style={{ fontSize: "16px", fontWeight: "600", color: "#f8fafc" }}>No findings recorded yet</h4>
-                <p style={{ fontSize: "13px", color: "#94a3b8", marginTop: "6px" }}>
+                <h4 style={{ fontSize: "16px", fontWeight: "600", color: "var(--text-main)" }}>No findings recorded yet</h4>
+                <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "6px" }}>
                   Run an autonomous investigation in the Agent Lab to record verified findings.
                 </p>
               </div>
             ) : findings.filter(f => findingFilter === "ALL" || (f.workstream || "").toLowerCase() === findingFilter.toLowerCase()).length === 0 ? (
               <div className="glass-card" style={{ textAlign: "center", padding: "30px" }}>
-                <p style={{ fontSize: "13.5px", color: "#94a3b8" }}>No {findingFilter} findings found for this project.</p>
+                <p style={{ fontSize: "13.5px", color: "var(--text-muted)" }}>No {findingFilter} findings found for this project.</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -2039,12 +2175,12 @@ export default function DueDiligenceApp() {
                         <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" }}>
                           <span className={`badge badge-${f.risk_severity}`}>{f.risk_severity} risk</span>
                           <span className={`badge badge-${f.workstream}`}>{f.workstream}</span>
-                          <span style={{ fontSize: "12px", color: "#94a3b8" }}>Confidence: <strong>{(parseFloat(f.confidence || 0.9) * 100).toFixed(0)}%</strong></span>
+                          <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Confidence: <strong>{(parseFloat(f.confidence || 0.9) * 100).toFixed(0)}%</strong></span>
                           <span style={{ fontSize: "12px", color: f.status === "APPROVED" ? "#34d399" : f.status === "REJECTED" ? "#f87171" : "#fbbf24" }}>
                             ● <strong>{f.status}</strong>
                           </span>
                         </div>
-                        <h4 style={{ fontSize: "17px", fontWeight: "700", color: "#f8fafc" }}>{f.title}</h4>
+                        <h4 style={{ fontSize: "17px", fontWeight: "700", color: "var(--text-main)" }}>{f.title}</h4>
                       </div>
 
                       {/* Review Buttons */}
@@ -2075,25 +2211,25 @@ export default function DueDiligenceApp() {
 
                     {/* Details */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "14px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.04)" }}>
-                        <div style={{ fontSize: "11px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: "4px" }}>Issue</div>
-                        <p style={{ fontSize: "13.5px", color: "#cbd5e1" }}>{f.issue}</p>
+                      <div style={{ background: "var(--bg-item)", padding: "14px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
+                        <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "4px" }}>Issue</div>
+                        <p style={{ fontSize: "13.5px", color: "var(--text-sub)" }}>{f.issue}</p>
                       </div>
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "14px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.04)" }}>
-                        <div style={{ fontSize: "11px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: "4px" }}>Why It Matters</div>
-                        <p style={{ fontSize: "13.5px", color: "#cbd5e1" }}>{f.why_it_matters || "Material transaction risk factor"}</p>
+                      <div style={{ background: "var(--bg-item)", padding: "14px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
+                        <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "4px" }}>Why It Matters</div>
+                        <p style={{ fontSize: "13.5px", color: "var(--text-sub)" }}>{f.why_it_matters || "Material transaction risk factor"}</p>
                       </div>
                     </div>
 
                     <div style={{ background: "rgba(99,102,241,0.05)", padding: "14px", borderRadius: "10px", border: "1px solid rgba(99,102,241,0.15)", marginBottom: "16px" }}>
-                      <div style={{ fontSize: "11px", fontWeight: "700", color: "#a5b4fc", textTransform: "uppercase", marginBottom: "4px" }}>Conclusion</div>
-                      <p style={{ fontSize: "14px", color: "#f8fafc", fontWeight: "500" }}>{f.evidence_conclusion}</p>
+                      <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--primary)", textTransform: "uppercase", marginBottom: "4px" }}>Conclusion</div>
+                      <p style={{ fontSize: "14px", color: "var(--text-main)", fontWeight: "500" }}>{f.evidence_conclusion}</p>
                     </div>
 
                     {/* Evidence Drawer */}
                     {f.evidence && f.evidence.length > 0 && (
                       <div>
-                        <h5 style={{ fontSize: "13px", fontWeight: "700", color: "#94a3b8", marginBottom: "10px" }}>
+                        <h5 style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", marginBottom: "10px" }}>
                           Cited Evidence & Source Traceability ({f.evidence.length})
                         </h5>
                         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -2106,14 +2242,14 @@ export default function DueDiligenceApp() {
                               'badge-unverified';
 
                             return (
-                              <div key={ev.id || idx} style={{ background: "#0a0e18", padding: "14px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <div key={ev.id || idx} style={{ background: "var(--bg-surface)", padding: "14px 16px", borderRadius: "10px", border: "1px solid var(--border-subtle)" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                                     <span style={{ fontSize: "13px", color: "#38bdf8", fontWeight: "700" }}>
                                       {ev.source_label || "Source Document"}
                                     </span>
                                     {ev.page_number && (
-                                      <span style={{ fontSize: "11.5px", color: "#94a3b8", background: "rgba(255,255,255,0.05)", padding: "2px 8px", borderRadius: "4px" }}>
+                                      <span style={{ fontSize: "11.5px", color: "var(--text-muted)", background: "var(--bg-item)", padding: "2px 8px", borderRadius: "4px" }}>
                                         Page {ev.page_number}
                                       </span>
                                     )}
@@ -2125,7 +2261,7 @@ export default function DueDiligenceApp() {
                                   </div>
                                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                     {ev.match_method && ev.match_method !== "none" && (
-                                      <span style={{ fontSize: "11px", color: "#a5b4fc", fontFamily: "var(--font-mono)" }}>
+                                      <span style={{ fontSize: "11px", color: "var(--primary)", fontFamily: "var(--font-mono)" }}>
                                         {ev.match_method} {ev.confidence ? `(${(ev.confidence * 100).toFixed(0)}%)` : ''}
                                       </span>
                                     )}
@@ -2136,19 +2272,19 @@ export default function DueDiligenceApp() {
                                 </div>
 
                                 {ev.extracted_value && (
-                                  <div style={{ fontSize: "12px", color: "#34d399", marginBottom: "6px", fontFamily: "var(--font-mono)" }}>
+                                  <div style={{ fontSize: "12px", color: "var(--emerald-text)", marginBottom: "6px", fontFamily: "var(--font-mono)" }}>
                                     Extracted Value: <strong>{ev.extracted_value}</strong>
                                   </div>
                                 )}
 
                                 {ev.quoted_text && (
-                                  <pre className="code-box" style={{ background: "#06090e", marginBottom: "8px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                                  <pre className="code-box" style={{ background: "var(--bg-code)", marginBottom: "8px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                                     {ev.quoted_text}
                                   </pre>
                                 )}
 
                                 {ev.validation_reason && (
-                                  <div style={{ fontSize: "12px", color: ev.validation_status === 'VERIFIED' ? "#34d399" : ev.validation_status === 'FLAGGED_DISCREPANCY' ? "#fca5a5" : "#94a3b8", background: "rgba(255,255,255,0.02)", padding: "6px 10px", borderRadius: "6px", borderLeft: `3px solid ${ev.validation_status === 'VERIFIED' ? '#10b981' : ev.validation_status === 'FLAGGED_DISCREPANCY' ? '#ef4444' : '#64748b'}` }}>
+                                  <div style={{ fontSize: "12px", color: ev.validation_status === 'VERIFIED' ? "#34d399" : ev.validation_status === 'FLAGGED_DISCREPANCY' ? "#fca5a5" : "#94a3b8", background: "var(--bg-item)", padding: "6px 10px", borderRadius: "6px", borderLeft: `3px solid ${ev.validation_status === 'VERIFIED' ? '#10b981' : ev.validation_status === 'FLAGGED_DISCREPANCY' ? '#ef4444' : '#64748b'}` }}>
                                     <strong>Validation Note:</strong> {ev.validation_reason}
                                   </div>
                                 )}
@@ -2161,19 +2297,19 @@ export default function DueDiligenceApp() {
 
                     {/* Review History & Audit Trail */}
                     {f.reviews && f.reviews.length > 0 && (
-                      <div style={{ marginTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "14px" }}>
-                        <h5 style={{ fontSize: "12px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                          <FileCheck size={14} color="#818cf8" /> Review Audit History ({f.reviews.length})
+                      <div style={{ marginTop: "16px", borderTop: "1px solid var(--border-subtle)", paddingTop: "14px" }}>
+                        <h5 style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                          <FileCheck size={14} color="var(--primary)" /> Review Audit History ({f.reviews.length})
                         </h5>
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                           {f.reviews.map((r, rIdx) => (
-                            <div key={r.id || rIdx} style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "8px", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                            <div key={r.id || rIdx} style={{ background: "var(--bg-item)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                               <div>
                                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                                   <span className={`badge ${r.action === 'APPROVE' ? 'badge-low' : r.action === 'REJECT' ? 'badge-high' : 'badge-medium'}`} style={{ fontSize: "10px", padding: "2px 8px" }}>
                                     {r.action}
                                   </span>
-                                  <span style={{ fontSize: "12px", fontWeight: "600", color: "#f8fafc" }}>
+                                  <span style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-main)" }}>
                                     {r.reviewer}
                                   </span>
                                   {r.reviewed_at && (
@@ -2183,7 +2319,7 @@ export default function DueDiligenceApp() {
                                   )}
                                 </div>
                                 {r.comment && (
-                                  <p style={{ fontSize: "12.5px", color: "#cbd5e1" }}>
+                                  <p style={{ fontSize: "12.5px", color: "var(--text-sub)" }}>
                                     &ldquo;{r.comment}&rdquo;
                                   </p>
                                 )}
@@ -2203,7 +2339,7 @@ export default function DueDiligenceApp() {
               <div className="modal-overlay" onClick={() => setReviewModal({ isOpen: false, findingId: null, action: "REQUEST_MORE_EVIDENCE" })}>
                 <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                   <h3 style={{ fontSize: "17px", fontWeight: "700" }}>Request More Evidence</h3>
-                  <p style={{ fontSize: "13px", color: "#94a3b8" }}>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                     Submitting this request will automatically generate an open DDRequest, create a pending task, and schedule an automated reanalysis run in PostgreSQL.
                   </p>
                   <textarea
@@ -2241,8 +2377,8 @@ export default function DueDiligenceApp() {
             <div className="glass-card" style={{ padding: "18px", height: "calc(100vh - 220px)", display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <MessageSquare size={17} color="#818cf8" />
-                  <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#f8fafc" }}>Chat Sessions</h3>
+                  <MessageSquare size={17} color="var(--primary)" />
+                  <h3 style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-main)" }}>Chat Sessions</h3>
                 </div>
                 <button
                   className="btn btn-primary btn-sm"
@@ -2254,8 +2390,8 @@ export default function DueDiligenceApp() {
                 </button>
               </div>
 
-              <div style={{ fontSize: "11.5px", color: "#94a3b8", marginBottom: "10px" }}>
-                Project: <strong style={{ color: "#cbd5e1" }}>{currentProject?.target_company || projectId}</strong>
+              <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "10px" }}>
+                Project: <strong style={{ color: "var(--text-sub)" }}>{currentProject?.target_company || projectId}</strong>
               </div>
 
               {/* Conversation items list */}
@@ -2276,8 +2412,8 @@ export default function DueDiligenceApp() {
                         style={{
                           padding: "10px 12px",
                           borderRadius: "8px",
-                          background: isActive ? "rgba(99, 102, 241, 0.15)" : "rgba(255, 255, 255, 0.02)",
-                          border: `1px solid ${isActive ? "rgba(99, 102, 241, 0.4)" : "rgba(255, 255, 255, 0.05)"}`,
+                          background: isActive ? "rgba(99, 102, 241, 0.12)" : "var(--bg-item)",
+                          border: `1px solid ${isActive ? "var(--primary)" : "var(--border-subtle)"}`,
                           cursor: "pointer",
                           transition: "all 0.15s ease",
                           display: "flex",
@@ -2287,7 +2423,7 @@ export default function DueDiligenceApp() {
                         }}
                       >
                         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                          <div style={{ fontSize: "12.5px", fontWeight: isActive ? "700" : "500", color: isActive ? "#f8fafc" : "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: "12.5px", fontWeight: isActive ? "700" : "500", color: isActive ? "var(--primary)" : "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {c.title}
                           </div>
                           <div style={{ fontSize: "10.5px", color: "#64748b", marginTop: "2px" }}>
@@ -2320,16 +2456,16 @@ export default function DueDiligenceApp() {
             {/* Main Chat Thread Area */}
             <div className="glass-card" style={{ padding: "0", height: "calc(100vh - 220px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
               {/* Chat Thread Header */}
-              <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(10, 14, 26, 0.6)" }}>
+              <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(10, 14, 26, 0.6)" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Bot size={18} color="#818cf8" />
-                    <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#f8fafc" }}>
+                    <Bot size={18} color="var(--primary)" />
+                    <h3 style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-main)" }}>
                       {activeConversationDetail?.title || "Evidence-Grounded Due Diligence Chat"}
                     </h3>
                   </div>
-                  <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "2px" }}>
-                    Grounding on {documents.length} project documents and {findings.length} findings • Llama 3.3 (11434)
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                    Grounding on {documents.length} confidential data room exhibits and {findings.length} verified findings
                   </div>
                 </div>
 
@@ -2355,15 +2491,15 @@ export default function DueDiligenceApp() {
                     <div style={{ background: "rgba(99, 102, 241, 0.15)", width: "54px", height: "54px", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px auto", color: "#818cf8" }}>
                       <MessageSquare size={26} />
                     </div>
-                    <h3 style={{ fontSize: "19px", fontWeight: "700", color: "#f8fafc", marginBottom: "8px" }}>
+                    <h3 style={{ fontSize: "19px", fontWeight: "700", color: "var(--text-main)", marginBottom: "8px" }}>
                       Evidence-Grounded Due Diligence Assistant
                     </h3>
-                    <p style={{ fontSize: "13px", color: "#94a3b8", lineHeight: "1.6", marginBottom: "22px" }}>
+                    <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.6", marginBottom: "22px" }}>
                       Ask questions regarding reported revenue, EBITDA margins, debt covenants, customer agreements, IP rights, or existing findings for <strong>{currentProject?.target_company || "the target company"}</strong>. Answers cite exact document names, pages, and chunk references.
                     </p>
 
                     <div style={{ textAlign: "left" }}>
-                      <div style={{ fontSize: "12px", fontWeight: "700", color: "#cbd5e1", textTransform: "uppercase", marginBottom: "10px" }}>
+                      <div style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-sub)", textTransform: "uppercase", marginBottom: "10px" }}>
                         Suggested Diligence Questions:
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -2378,13 +2514,13 @@ export default function DueDiligenceApp() {
                             type="button"
                             onClick={() => handleSendChatMessage(null, promptText)}
                             style={{
-                              background: "rgba(255, 255, 255, 0.02)",
-                              border: "1px solid rgba(255, 255, 255, 0.07)",
+                              background: "var(--bg-item)",
+                              border: "1px solid var(--border-subtle)",
                               borderRadius: "8px",
                               padding: "10px 14px",
                               textAlign: "left",
                               fontSize: "12.5px",
-                              color: "#cbd5e1",
+                              color: "var(--text-sub)",
                               cursor: "pointer",
                               transition: "all 0.15s ease",
                               display: "flex",
@@ -2393,7 +2529,7 @@ export default function DueDiligenceApp() {
                             }}
                           >
                             <span>{promptText}</span>
-                            <ArrowRight size={13} color="#818cf8" />
+                            <ArrowRight size={13} color="var(--primary)" />
                           </button>
                         ))}
                       </div>
@@ -2421,11 +2557,11 @@ export default function DueDiligenceApp() {
                             </>
                           ) : (
                             <>
-                              <Bot size={12} color="#818cf8" />
-                              <span>DD Assistant (Llama)</span>
+                              <Bot size={12} color="var(--primary)" />
+                              <span>DD Advisory Intelligence</span>
                             </>
                           )}
-                          <span>• {new Date(msg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>• {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
                         </div>
 
                         {/* Bubble */}
@@ -2434,9 +2570,9 @@ export default function DueDiligenceApp() {
                             maxWidth: isUser ? "80%" : "90%",
                             padding: "14px 18px",
                             borderRadius: isUser ? "14px 14px 2px 14px" : "14px 14px 14px 2px",
-                            background: isUser ? "linear-gradient(135deg, rgba(79, 70, 229, 0.4) 0%, rgba(99, 102, 241, 0.3) 100%)" : "rgba(16, 23, 38, 0.85)",
-                            border: `1px solid ${isUser ? "rgba(99, 102, 241, 0.5)" : "rgba(255, 255, 255, 0.08)"}`,
-                            color: "#f8fafc",
+                            background: isUser ? "linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%)" : "var(--bg-surface)",
+                            border: `1px solid ${isUser ? "rgba(99, 102, 241, 0.35)" : "var(--border-subtle)"}`,
+                            color: "var(--text-main)",
                             fontSize: "13.5px",
                             lineHeight: "1.65",
                             whiteSpace: "pre-wrap"
@@ -2454,8 +2590,8 @@ export default function DueDiligenceApp() {
 
                           {/* Cited Sources Drawer / Cards */}
                           {msg.sources && msg.sources.length > 0 && (
-                            <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                              <div style={{ fontSize: "11.5px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px solid var(--border-subtle)" }}>
+                              <div style={{ fontSize: "11.5px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
                                 <Layers size={13} color="#38bdf8" />
                                 Supporting Evidence & Citations ({msg.sources.length})
                               </div>
@@ -2464,10 +2600,10 @@ export default function DueDiligenceApp() {
                                   <div
                                     key={sIdx}
                                     style={{
-                                      background: "#080c14",
+                                      background: "var(--bg-surface)",
                                       padding: "10px 12px",
                                       borderRadius: "8px",
-                                      border: "1px solid rgba(255, 255, 255, 0.05)",
+                                      border: "1px solid var(--border-subtle)",
                                       fontSize: "11.5px"
                                     }}
                                   >
@@ -2483,7 +2619,7 @@ export default function DueDiligenceApp() {
                                         {src.validation_status === 'VERIFIED' ? 'Verified Quote' : src.page_number ? `Page ${src.page_number}` : 'Evidence'}
                                       </span>
                                     </div>
-                                    <p style={{ color: "#94a3b8", margin: 0, fontStyle: "italic", fontSize: "11px", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                    <p style={{ color: "var(--text-muted)", margin: 0, fontStyle: "italic", fontSize: "11px", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                                       &ldquo;{src.snippet}&rdquo;
                                     </p>
                                   </div>
@@ -2501,8 +2637,8 @@ export default function DueDiligenceApp() {
                 {sendingChat && (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", maxWidth: "90%" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", fontSize: "11px", color: "#64748b" }}>
-                      <Bot size={12} color="#818cf8" />
-                      <span>DD Assistant (Llama)</span>
+                      <Bot size={12} color="var(--primary)" />
+                      <span>DD Advisory Intelligence</span>
                     </div>
                     <div
                       style={{
@@ -2517,8 +2653,8 @@ export default function DueDiligenceApp() {
                         fontSize: "13px"
                       }}
                     >
-                      <RefreshCw className="animate-spin" size={16} color="#818cf8" />
-                      <span>Retrieving project evidence from pgvector & generating answer with Llama...</span>
+                      <RefreshCw className="animate-spin" size={16} color="var(--primary)" />
+                      <span>Retrieving verified data room evidence & synthesizing response...</span>
                     </div>
                   </div>
                 )}
@@ -2533,7 +2669,7 @@ export default function DueDiligenceApp() {
               </div>
 
               {/* Chat Input Bar */}
-              <div style={{ padding: "14px 20px", borderTop: "1px solid rgba(255, 255, 255, 0.06)", background: "rgba(10, 14, 26, 0.8)" }}>
+              <div style={{ padding: "14px 20px", borderTop: "1px solid var(--border-subtle)", background: "rgba(10, 14, 26, 0.8)" }}>
                 <form
                   onSubmit={handleSendChatMessage}
                   style={{ display: "flex", gap: "10px", alignItems: "center" }}
@@ -2574,11 +2710,11 @@ export default function DueDiligenceApp() {
                       <FileText size={20} />
                     </div>
                     <div>
-                      <h2 style={{ fontSize: "20px", fontWeight: "700", color: "#f8fafc" }}>
+                      <h2 style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-main)" }}>
                         {reportData?.metadata?.target_company ? `${reportData.metadata.target_company} — Due Diligence Report` : "Final Due Diligence Report & Export"}
                       </h2>
-                      <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "2px" }}>
-                        Project: <strong style={{ color: "#cbd5e1" }}>{currentProject?.name || projectId}</strong> &nbsp;•&nbsp;
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                        Project: <strong style={{ color: "var(--text-sub)" }}>{currentProject?.name || projectId}</strong> &nbsp;•&nbsp;
                         Period: <span style={{ color: "#fbbf24" }}>{reportData?.metadata?.diligence_period || "FY 2025-26"}</span> &nbsp;•&nbsp;
                         Deal: <span style={{ color: "#38bdf8" }}>{reportData?.metadata?.deal_type || "Acquisition"}</span>
                       </div>
@@ -2626,9 +2762,9 @@ export default function DueDiligenceApp() {
             {/* Loading State */}
             {loadingReport && (
               <div className="glass-card" style={{ padding: "40px", textAlign: "center", marginBottom: "22px" }}>
-                <RefreshCw className="animate-spin" size={32} color="#818cf8" style={{ margin: "0 auto 14px auto" }} />
-                <h3 style={{ fontSize: "16px", color: "#f8fafc", fontWeight: "600" }}>Compiling Due Diligence Report</h3>
-                <p style={{ fontSize: "13px", color: "#94a3b8", marginTop: "4px" }}>
+                <RefreshCw className="animate-spin" size={32} color="var(--primary)" style={{ margin: "0 auto 14px auto" }} />
+                <h3 style={{ fontSize: "16px", color: "var(--text-main)", fontWeight: "600" }}>Compiling Due Diligence Report</h3>
+                <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px" }}>
                   Aggregating findings, evidence citations, validation records, scope questions, and review history...
                 </p>
               </div>
@@ -2648,8 +2784,8 @@ export default function DueDiligenceApp() {
                 {/* 1. Executive Summary KPIs */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px" }}>
                   <div className="glass-card" style={{ padding: "16px" }}>
-                    <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: "700" }}>Total Findings</div>
-                    <div style={{ fontSize: "28px", fontWeight: "800", color: "#f8fafc", marginTop: "4px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: "700" }}>Total Findings</div>
+                    <div style={{ fontSize: "28px", fontWeight: "800", color: "var(--text-main)", marginTop: "4px" }}>
                       {reportData.executive_summary.total_findings}
                     </div>
                     <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
@@ -2662,17 +2798,17 @@ export default function DueDiligenceApp() {
                     <div style={{ fontSize: "28px", fontWeight: "800", color: "#ef4444", marginTop: "4px" }}>
                       {reportData.executive_summary.high_risk_count}
                     </div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
                       {reportData.executive_summary.medium_risk_count} Medium • {reportData.executive_summary.low_risk_count} Low Risk
                     </div>
                   </div>
 
                   <div className="glass-card" style={{ padding: "16px", borderLeft: "4px solid #10b981" }}>
-                    <div style={{ fontSize: "11px", color: "#34d399", textTransform: "uppercase", fontWeight: "700" }}>Approved Findings</div>
+                    <div style={{ fontSize: "11px", color: "var(--emerald-text)", textTransform: "uppercase", fontWeight: "700" }}>Approved Findings</div>
                     <div style={{ fontSize: "28px", fontWeight: "800", color: "#10b981", marginTop: "4px" }}>
                       {reportData.executive_summary.approved_count}
                     </div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
                       Confirmed by lead reviewer
                     </div>
                   </div>
@@ -2682,7 +2818,7 @@ export default function DueDiligenceApp() {
                     <div style={{ fontSize: "28px", fontWeight: "800", color: "#f59e0b", marginTop: "4px" }}>
                       {reportData.executive_summary.pending_review_count}
                     </div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
                       {reportData.executive_summary.more_evidence_required_count} More Evidence Req.
                     </div>
                   </div>
@@ -2692,7 +2828,7 @@ export default function DueDiligenceApp() {
                     <div style={{ fontSize: "28px", fontWeight: "800", color: "#38bdf8", marginTop: "4px" }}>
                       {reportData.executive_summary.unverified_evidence_count}
                     </div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
                       Flagged by evidence validator
                     </div>
                   </div>
@@ -2701,10 +2837,10 @@ export default function DueDiligenceApp() {
                 {/* 2. Executive Synthesis Overview */}
                 <div className="glass-card" style={{ padding: "20px 24px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                    <ShieldAlert size={16} color="#818cf8" />
-                    <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#f8fafc" }}>Executive Summary Overview</h3>
+                    <ShieldAlert size={16} color="var(--primary)" />
+                    <h3 style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-main)" }}>Executive Summary Overview</h3>
                   </div>
-                  <p style={{ fontSize: "13.5px", color: "#cbd5e1", lineHeight: "1.7", margin: 0, fontStyle: "italic" }}>
+                  <p style={{ fontSize: "13.5px", color: "var(--text-sub)", lineHeight: "1.7", margin: 0, fontStyle: "italic" }}>
                     &ldquo;{reportData.executive_summary.executive_overview}&rdquo;
                   </p>
                 </div>
@@ -2713,20 +2849,20 @@ export default function DueDiligenceApp() {
                 <div className="glass-card" style={{ padding: "18px 22px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
                     <Settings size={16} color="#34d399" />
-                    <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#f8fafc" }}>Diligence Scope & Enabled Workstreams</h3>
+                    <h3 style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-main)" }}>Diligence Scope & Enabled Workstreams</h3>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px" }}>
                     {reportData.scope.workstream_details.map((ws, idx) => (
-                      <div key={idx} style={{ background: "rgba(255,255,255,0.02)", padding: "12px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div key={idx} style={{ background: "var(--bg-item)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                          <span style={{ fontSize: "12.5px", fontWeight: "700", color: "#f8fafc", textTransform: "capitalize" }}>
+                          <span style={{ fontSize: "12.5px", fontWeight: "700", color: "var(--text-main)", textTransform: "capitalize" }}>
                             {ws.workstream} Due Diligence
                           </span>
                           <span className={`badge ${ws.is_enabled ? 'badge-verified' : 'badge-medium'}`} style={{ fontSize: "10px" }}>
                             {ws.is_enabled ? "Enabled" : "Disabled"}
                           </span>
                         </div>
-                        <div style={{ fontSize: "11.5px", color: "#94a3b8" }}>
+                        <div style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>
                           Questions: <strong>{ws.custom_questions?.length || 0}</strong> &nbsp;•&nbsp;
                           Review Areas: <strong>{ws.review_areas?.length || 0}</strong>
                         </div>
@@ -2737,10 +2873,10 @@ export default function DueDiligenceApp() {
 
                 {/* 4. Findings Section with Workstream Filter */}
                 <div className="glass-card" style={{ padding: "20px 24px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "18px", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "18px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <Layers size={17} color="#818cf8" />
-                      <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#f8fafc" }}>
+                      <Layers size={17} color="var(--primary)" />
+                      <h3 style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-main)" }}>
                         Recorded Findings Breakdown ({reportData.all_findings.length})
                       </h3>
                     </div>
@@ -2808,10 +2944,10 @@ export default function DueDiligenceApp() {
                             <div
                               key={item.id}
                               style={{
-                                background: "rgba(255, 255, 255, 0.02)",
+                                background: "var(--bg-item)",
                                 padding: "18px 20px",
                                 borderRadius: "10px",
-                                border: `1px solid ${isHigh ? "rgba(239, 68, 68, 0.3)" : "rgba(255, 255, 255, 0.07)"}`,
+                                border: `1px solid ${isHigh ? "rgba(239, 68, 68, 0.3)" : "var(--border-subtle)"}`,
                               }}
                             >
                               {/* Header */}
@@ -2828,38 +2964,38 @@ export default function DueDiligenceApp() {
                                       {item.status.toUpperCase()}
                                     </span>
                                   </div>
-                                  <h4 style={{ fontSize: "15px", fontWeight: "700", color: "#f8fafc", margin: 0 }}>
+                                  <h4 style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-main)", margin: 0 }}>
                                     {item.title}
                                   </h4>
                                 </div>
                               </div>
 
                               {/* Details */}
-                              <p style={{ fontSize: "13px", color: "#cbd5e1", lineHeight: "1.6", marginBottom: "8px" }}>
+                              <p style={{ fontSize: "13px", color: "var(--text-sub)", lineHeight: "1.6", marginBottom: "8px" }}>
                                 <strong>Issue:</strong> {item.issue}
                               </p>
 
                               {item.why_it_matters && (
-                                <p style={{ fontSize: "12.5px", color: "#94a3b8", lineHeight: "1.5", marginBottom: "6px" }}>
-                                  <strong style={{ color: "#cbd5e1" }}>Commercial Impact:</strong> {item.why_it_matters}
+                                <p style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.5", marginBottom: "6px" }}>
+                                  <strong style={{ color: "var(--text-sub)" }}>Commercial Impact:</strong> {item.why_it_matters}
                                 </p>
                               )}
 
                               {item.recommended_action && (
-                                <p style={{ fontSize: "12.5px", color: "#94a3b8", lineHeight: "1.5", marginBottom: "10px" }}>
+                                <p style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: "1.5", marginBottom: "10px" }}>
                                   <strong style={{ color: "#818cf8" }}>Recommended Action:</strong> {item.recommended_action}
                                 </p>
                               )}
 
                               {/* Attached Evidence Drawer */}
                               {item.evidence && item.evidence.length > 0 && (
-                                <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                                  <div style={{ fontSize: "11px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: "6px" }}>
+                                <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px solid var(--border-subtle)" }}>
+                                  <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
                                     Source Evidence ({item.evidence.length})
                                   </div>
                                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "8px" }}>
                                     {item.evidence.map((ev, eIdx) => (
-                                      <div key={eIdx} style={{ background: "#080c14", padding: "8px 12px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)", fontSize: "11.5px" }}>
+                                      <div key={eIdx} style={{ background: "var(--bg-surface)", padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--border-subtle)", fontSize: "11.5px" }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
                                           <strong style={{ color: "#38bdf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                             {ev.document_name}
@@ -2868,7 +3004,7 @@ export default function DueDiligenceApp() {
                                             {ev.validation_status}
                                           </span>
                                         </div>
-                                        <p style={{ margin: 0, color: "#94a3b8", fontStyle: "italic", fontSize: "11px" }}>
+                                        <p style={{ margin: 0, color: "var(--text-muted)", fontStyle: "italic", fontSize: "11px" }}>
                                           Page {ev.page_number || "-"}: &ldquo;{(ev.quoted_text || ev.extracted_value || "Claim").slice(0, 120)}...&rdquo;
                                         </p>
                                       </div>
@@ -2880,7 +3016,7 @@ export default function DueDiligenceApp() {
                               {/* Reviewer notes */}
                               {item.reviews && item.reviews.length > 0 && (
                                 <div style={{ marginTop: "10px", fontSize: "11.5px", color: "#64748b" }}>
-                                  Reviewer: <strong style={{ color: "#94a3b8" }}>{item.reviews[item.reviews.length - 1].reviewer_name || "Lead Reviewer"}</strong> • Action: <strong>{item.reviews[item.reviews.length - 1].action}</strong> • &ldquo;{item.reviews[item.reviews.length - 1].comments}&rdquo;
+                                  Reviewer: <strong style={{ color: "var(--text-muted)" }}>{item.reviews[item.reviews.length - 1].reviewer_name || "Lead Reviewer"}</strong> • Action: <strong>{item.reviews[item.reviews.length - 1].action}</strong> • &ldquo;{item.reviews[item.reviews.length - 1].comments}&rdquo;
                                 </div>
                               )}
                             </div>
@@ -2896,16 +3032,16 @@ export default function DueDiligenceApp() {
                   <div className="glass-card" style={{ padding: "18px 22px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
                       <ListTodo size={16} color="#fbbf24" />
-                      <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#f8fafc" }}>
+                      <h3 style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-main)" }}>
                         Outstanding Information Requests & Action Items ({reportData.outstanding_items.length})
                       </h3>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                       {reportData.outstanding_items.map((oi, oIdx) => (
-                        <div key={oIdx} style={{ background: "rgba(255,255,255,0.02)", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div key={oIdx} style={{ background: "var(--bg-item)", padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div>
-                            <div style={{ fontSize: "12.5px", fontWeight: "600", color: "#f8fafc" }}>{oi.title}</div>
-                            <div style={{ fontSize: "11.5px", color: "#94a3b8" }}>{oi.description}</div>
+                            <div style={{ fontSize: "12.5px", fontWeight: "600", color: "var(--text-main)" }}>{oi.title}</div>
+                            <div style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>{oi.description}</div>
                           </div>
                           <div style={{ display: "flex", gap: "6px" }}>
                             <span className="badge badge-medium" style={{ fontSize: "10px" }}>{oi.priority.toUpperCase()}</span>
@@ -2921,9 +3057,9 @@ export default function DueDiligenceApp() {
                 <div className="glass-card" style={{ padding: "18px 22px", background: "rgba(10, 14, 26, 0.7)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
                     <CheckCircle2 size={16} color="#94a3b8" />
-                    <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#cbd5e1" }}>Diligence Limitations & Audit Disclaimers</h3>
+                    <h3 style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-sub)" }}>Diligence Limitations & Audit Disclaimers</h3>
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "12px", color: "#94a3b8", lineHeight: "1.7" }}>
+                  <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.7" }}>
                     {reportData.limitations.map((lim, lIdx) => (
                       <li key={lIdx}>{lim}</li>
                     ))}
@@ -2941,20 +3077,20 @@ export default function DueDiligenceApp() {
                 <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "560px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <Briefcase size={18} color="#818cf8" />
-                      <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#f8fafc" }}>
+                      <Briefcase size={18} color="var(--primary)" />
+                      <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)" }}>
                         {projectModalMode === "create" ? "Create Due Diligence Project" : "Edit Project & Workstreams"}
                       </h3>
                     </div>
                     <button
                       type="button"
                       onClick={() => setProjectModalOpen(false)}
-                      style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "16px" }}
+                      style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "16px" }}
                     >
                       ✕
                     </button>
                   </div>
-                  <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "16px" }}>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px" }}>
                     Configure the target company entity, deal profile, diligence timeline, and active specialist workstreams.
                   </p>
 
@@ -2967,7 +3103,7 @@ export default function DueDiligenceApp() {
                   <form onSubmit={handleSaveProject} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                       <div>
-                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "#cbd5e1", display: "block", marginBottom: "4px" }}>
+                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "var(--text-sub)", display: "block", marginBottom: "4px" }}>
                           Project Name *
                         </label>
                         <input
@@ -2981,7 +3117,7 @@ export default function DueDiligenceApp() {
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "#cbd5e1", display: "block", marginBottom: "4px" }}>
+                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "var(--text-sub)", display: "block", marginBottom: "4px" }}>
                           Target Company *
                         </label>
                         <input
@@ -2998,7 +3134,7 @@ export default function DueDiligenceApp() {
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
                       <div>
-                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "#cbd5e1", display: "block", marginBottom: "4px" }}>
+                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "var(--text-sub)", display: "block", marginBottom: "4px" }}>
                           Deal Type
                         </label>
                         <select
@@ -3015,7 +3151,7 @@ export default function DueDiligenceApp() {
                         </select>
                       </div>
                       <div>
-                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "#cbd5e1", display: "block", marginBottom: "4px" }}>
+                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "var(--text-sub)", display: "block", marginBottom: "4px" }}>
                           Industry Sector
                         </label>
                         <input
@@ -3028,7 +3164,7 @@ export default function DueDiligenceApp() {
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "#cbd5e1", display: "block", marginBottom: "4px" }}>
+                        <label style={{ fontSize: "11.5px", fontWeight: "600", color: "var(--text-sub)", display: "block", marginBottom: "4px" }}>
                           Diligence Period
                         </label>
                         <input
@@ -3043,7 +3179,7 @@ export default function DueDiligenceApp() {
                     </div>
 
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight: "600", color: "#cbd5e1", display: "block", marginBottom: "4px" }}>
+                      <label style={{ fontSize: "11.5px", fontWeight: "600", color: "var(--text-sub)", display: "block", marginBottom: "4px" }}>
                         Project Description
                       </label>
                       <textarea
@@ -3056,12 +3192,12 @@ export default function DueDiligenceApp() {
                       />
                     </div>
 
-                    <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px 16px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                      <div style={{ fontSize: "12px", fontWeight: "700", color: "#f8fafc", marginBottom: "8px" }}>
+                    <div style={{ background: "var(--bg-item)", padding: "12px 16px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
+                      <div style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-main)", marginBottom: "8px" }}>
                         Initial Workstreams Selection
                       </div>
                       <div style={{ display: "flex", gap: "20px" }}>
-                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#34d399", cursor: "pointer" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "var(--emerald-text)", cursor: "pointer" }}>
                           <input
                             type="checkbox"
                             checked={projectForm.financial}
@@ -3110,22 +3246,22 @@ export default function DueDiligenceApp() {
                 <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "580px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <Settings size={18} color="#818cf8" />
-                      <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#f8fafc" }}>
+                      <Settings size={18} color="var(--primary)" />
+                      <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-main)" }}>
                         Configure Scope: {activeScopeWs.toUpperCase()} Workstream
                       </h3>
                     </div>
                     <button
                       type="button"
                       onClick={() => setScopeModalOpen(false)}
-                      style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "16px" }}
+                      style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "16px" }}
                     >
                       ✕
                     </button>
                   </div>
 
                   {/* Workstream Switcher Tabs */}
-                  <div style={{ display: "flex", gap: "8px", marginBottom: "14px", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "10px" }}>
+                  <div style={{ display: "flex", gap: "8px", marginBottom: "14px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "10px" }}>
                     <button
                       type="button"
                       className={`btn btn-sm ${activeScopeWs === "financial" ? "btn-primary" : "btn-secondary"}`}
@@ -3144,10 +3280,10 @@ export default function DueDiligenceApp() {
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                     <div>
-                      <label style={{ fontSize: "12px", fontWeight: "700", color: "#cbd5e1", display: "block", marginBottom: "4px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-sub)", display: "block", marginBottom: "4px" }}>
                         Key Investigation Questions (one per line)
                       </label>
-                      <p style={{ fontSize: "11.5px", color: "#94a3b8", marginBottom: "6px" }}>
+                      <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "6px" }}>
                         Specific hypotheses or queries the specialist agent must investigate.
                       </p>
                       <textarea
@@ -3161,10 +3297,10 @@ export default function DueDiligenceApp() {
                     </div>
 
                     <div>
-                      <label style={{ fontSize: "12px", fontWeight: "700", color: "#cbd5e1", display: "block", marginBottom: "4px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-sub)", display: "block", marginBottom: "4px" }}>
                         Requested Review Areas (one per line)
                       </label>
-                      <p style={{ fontSize: "11.5px", color: "#94a3b8", marginBottom: "6px" }}>
+                      <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "6px" }}>
                         Core diligence categories relevant to this workstream.
                       </p>
                       <textarea

@@ -86,8 +86,10 @@ def review_finding(
     request: ReviewRequest,
     job_id: Optional[str] = None,
 ):
+    from workflow.dd_graph import job_status, latest_job_id, resume_job
 
-    _scope(job_id)
+    target_job_id = job_id or latest_job_id()
+    _scope(target_job_id)
 
     action = request.action.upper()
 
@@ -116,17 +118,29 @@ def review_finding(
             comment=request.comment,
         )
 
-        return {
-            "success": True,
-            "finding": finding,
-        }
-
     except ValueError as error:
-
+        status_code = 404 if "not found" in str(error).lower() else 400
         raise HTTPException(
-            status_code=404,
+            status_code=status_code,
             detail=str(error),
         )
+
+    resolved_job = target_job_id or finding.get("job_id")
+    if resolved_job:
+        try:
+            info = job_status(resolved_job)
+            if info.get("waiting_for") == "review":
+                resume_job(resolved_job)
+        except Exception as error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to resume job {resolved_job}: {error}",
+            )
+
+    return {
+        "success": True,
+        "finding": finding,
+    }
 
 
 @app.get("/documents")

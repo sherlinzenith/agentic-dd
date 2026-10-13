@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from pathlib import Path
 
 from langgraph.types import Command
@@ -122,6 +122,7 @@ def resume_job(job_id):
     if job_status(job_id)["status"] == "NOT_FOUND":
         raise ValueError(f"Job {job_id} not found.")
 
+    set_job(job_id)
     get_graph().invoke(Command(resume=True), _config(job_id))
 
     return job_status(job_id)

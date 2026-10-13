@@ -478,12 +478,20 @@ def review(
         job_id
     )
 
-    return store.save_review(
+    finding = store.save_review(
         finding_id,
         action,
         reviewer,
         comment,
     )
+
+    from workflow.dd_graph import job_status, resume_job
+
+    info = job_status(job_id)
+    if info.get("waiting_for") == "review":
+        resume_job(job_id)
+
+    return finding
 
 
 def page_text(
